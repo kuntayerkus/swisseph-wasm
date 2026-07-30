@@ -37,10 +37,14 @@ jobs:
 
       - run: npm run build
 
+      # `git diff` değil snapshot + diff — gerekçe ci.yml'deki aynı adımda.
+      # Özetle: konteyner işinde checkout'un safe.directory'si geçici, sonraki
+      # adımda git repoyu tanımıyor ve kontrol yanlış sebeple düşüyor.
       - name: Üretilmiş sabitler güncel mi
         run: |
+          cp -r packages/core/src/generated "$RUNNER_TEMP/generated-before"
           npm run build:constants
-          git diff --exit-code packages/core/src/generated/ \
+          diff -r "$RUNNER_TEMP/generated-before" packages/core/src/generated \
             || (echo "::error::generated/constants.ts bayat" && exit 1)
 
       - name: Efemeris dosyalarını getir

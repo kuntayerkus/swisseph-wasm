@@ -39,10 +39,20 @@ jobs:
       # Sabitler swephexp.h'den + derlenmiş WASM'dan üretiliyor. Burada
       # yeniden üretip commit'lenmiş halle karşılaştırıyoruz: upstream C
       # değiştiğinde üretilmiş dosyanın bayatladığını CI yakalasın.
+      #
+      # `git diff` KULLANILMIYOR, ve geri koymayın. Bu iş bir konteynerde
+      # koşuyor; actions/checkout `safe.directory` kaydını GEÇİCİ bir HOME'a
+      # yazıp adım sonunda bırakıyor. Workspace runner UID'sine ait, konteyner
+      # ise root olarak koşuyor — sonraki adımda git dubious-ownership
+      # korumasına takılıp "Not a git repository" diyor. `|| (echo ...)` bunu
+      # "constants bayat" diye raporluyordu: kontrol hiç çalışmadan, yanlış
+      # sebeple kırmızı veriyordu. Ölçüldü — ilk CI koşusu tam olarak böyle
+      # düştü. Snapshot + diff git'e hiç dokunmadan aynı özelliği sınıyor.
       - name: Regenerate constants and check they are current
         run: |
+          cp -r packages/core/src/generated "$RUNNER_TEMP/generated-before"
           npm run build:constants
-          git diff --exit-code packages/core/src/generated/ \
+          diff -r "$RUNNER_TEMP/generated-before" packages/core/src/generated \
             || (echo "::error::generated/constants.ts bayat — 'npm run build:constants' çalıştırıp commit'leyin" && exit 1)
 
       # Public runtime yüzeyinde Türkçe string literal olmamalı. Yorumlar
