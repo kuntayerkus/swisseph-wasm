@@ -29,6 +29,11 @@ node_modules/
 .DS_Store
 Thumbs.db
 
+# Proje düzeyinde .npmrc oluşursa içinde _authToken bulunabilir. Yayın
+# CI'da NPM_TOKEN secret'ıyla yapılıyor, yani burada bir token dosyasına
+# hiç ihtiyaç yok; yanlışlıkla oluşanın da commit'lenmemesi için.
+.npmrc
+
 # İç çalışma belgeleri — diskte tutuluyor, repoya girmiyor. Kullanıcıya
 # hitap etmiyorlar (devir notları, denetim günlüğü) ve kişisel bilgi
 # içeriyorlar. Public belgeler: README, README.tr, docs/.
