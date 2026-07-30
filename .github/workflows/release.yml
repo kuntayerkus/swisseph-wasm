@@ -104,7 +104,12 @@ jobs:
     permissions:
       contents: read
       id-token: write        # npm provenance için OIDC
-    environment: npm-publish  # onay kapısı: repo ayarlarından zorunlu kılın
+    # Onay kapısı. Bu ad, repo ayarlarındaki environment adıyla HARFİ HARFİNE
+    # aynı olmalı. Eşleşmezse GitHub sessizce o adda korumasız yeni bir
+    # environment yaratır ve yayın onaysız gider — kapı kurulmuş görünür ama
+    # yoktur. Burada tam olarak bu oldu: ayarlarda `npm_publish` tanımlıydı,
+    # burada `npm-publish` yazıyordu.
+    environment: npm_publish
     steps:
       - uses: actions/checkout@v4
 
