@@ -31,9 +31,17 @@ jobs:
 
       - run: npm ci
 
-      - name: Etiket ile paket sürümleri uyuşuyor mu
+      # Ucuz ön kontrol: etiket ile paket sürümü tutmuyorsa on dakikalık
+      # derlemeye hiç girmeyelim. Tam denetim aşağıda, ağaç tamamlandıktan
+      # sonra. Burada check-release-ready ÇAĞRILAMAZ — o betik artefaktları
+      # ve veri paketlerini de arıyor, ikisi de bu noktada henüz yok.
+      - name: Etiket sürümü paketlerle uyuşuyor mu (ön kontrol)
         if: startsWith(github.ref, 'refs/tags/v')
-        run: node tools/check-release-ready.mjs "${GITHUB_REF_NAME#v}"
+        run: |
+          want="${GITHUB_REF_NAME#v}"
+          got=$(node -e "console.log(require('./packages/core/package.json').version)")
+          test "$want" = "$got" \
+            || (echo "::error::etiket $GITHUB_REF_NAME ama paket sürümü $got" && exit 1)
 
       - run: npm run build
 
@@ -64,6 +72,30 @@ jobs:
         run: |
           npm run build:data
           npm run build:asteroids
+
+      # Tam yayın denetimi — ağaç ancak BURADA yayınlanacak haliyle eksiksiz:
+      # WASM derlendi, dist/ üretildi, iki veri paketi kuruldu.
+      #
+      # Bu adım eskiden `npm ci`nin hemen ardındaydı ve orada geçmesi mümkün
+      # değildi: betik packages/core/wasm, packages/core/dist, packages/mcp/dist
+      # ve packages/{data,asteroids}/ephe arıyor, hiçbiri o noktada mevcut
+      # olmuyor. v0.1.0 etiketi tam olarak böyle düştü — yedi "artefakt eksik"
+      # sorunu, sürümlerde tek bir uyuşmazlık olmadan.
+      #
+      # Etiket yokken sürüm argümanı VERİLMİYOR: workflow_dispatch'te
+      # GITHUB_REF_NAME "main" olur ve beklenen sürüm diye "main" geçilirse
+      # denetim anlamsızca düşer. Argümansız çağrı private bayraklarını,
+      # artefaktları ve manifest hash'lerini yine de doğruluyor — kuru
+      # çalıştırmanın gerçek bir prova olması için gereken buydu. Eskiden bu
+      # adım etiketle sınırlıydı, dolayısıyla kuru çalıştırma yeşil verirken
+      # asıl etiket koşusu düşebiliyordu; olan da buydu.
+      - name: Yayın denetimi
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            node tools/check-release-ready.mjs "${GITHUB_REF_NAME#v}"
+          else
+            node tools/check-release-ready.mjs
+          fi
 
       - name: Tüm kontroller
         env:
