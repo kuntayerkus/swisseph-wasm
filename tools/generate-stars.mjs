@@ -214,11 +214,25 @@ export const STAR_GROUP_COUNTS: Readonly<Record<StarGroup, number>> = {
 export const BRIGHT_MAGNITUDE_LIMIT = ${BRIGHT_LIMIT};
 `;
 
-writeFileSync(OUT, body);
+/*
+ * İçerik aynıysa dosyaya dokunma — gerekçesi generate-constants.mjs'teki
+ * aynı blokta. Kısaca: koşulsuz yazmak, çıktı birebir aynı olsa bile mtime'ı
+ * ilerletiyor ve check-release-ready'nin tazelik kontrolünü "dist bayat" diye
+ * yanlış alarma düşürüyor. build:stars şu an hiçbir iş akışında koşmuyor,
+ * yani bu betik henüz kimseyi ısırmadı; constants tarafı ısırdı ve v0.1.0
+ * yayınını durdurdu. Aynı tuzağı burada da kapatıyoruz.
+ */
+let unchanged = false;
+try {
+  unchanged = readFileSync(OUT, 'utf8') === body;
+} catch {
+  unchanged = false;                       // dosya yok — ilk üretim
+}
+if (!unchanged) writeFileSync(OUT, body);
 
 console.log(`\nGruplar:`);
 for (const [group, n] of Object.entries(counts)) {
   console.log(`  ${group.padEnd(10)} ${String(n).padStart(4)} yıldız`);
 }
 console.log(`\n  ${'TOPLAM'.padEnd(10)} ${String(sorted.length).padStart(4)} benzersiz yıldız`);
-console.log(`\nYazıldı: packages/core/src/generated/stars.ts`);
+console.log(`\n${unchanged ? 'Değişmedi' : 'Yazıldı'}: packages/core/src/generated/stars.ts`);
