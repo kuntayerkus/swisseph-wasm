@@ -368,8 +368,30 @@ export const EclipticNutationId = ${num('SE_ECL_NUT')};
 
 mkdirSync(OUT_DIR, { recursive: true });
 const outFile = join(OUT_DIR, 'constants.ts');
-writeFileSync(outFile, parts.join('\n'));
+const next = parts.join('\n');
 
-console.log(`\nYazıldı: packages/core/src/generated/constants.ts`);
+/*
+ * İÇERİK AYNIYSA DOSYAYA DOKUNMA.
+ *
+ * Koşulsuz writeFileSync, çıktı byte byte aynı olsa bile mtime'ı ilerletiyordu.
+ * Bu yalnızca kozmetik değil: release.yml önce `npm run build` ile dist/
+ * üretiyor, HEMEN ARDINDAN sabitleri yeniden üretip karşılaştırıyor. O ikinci
+ * üretim constants.ts'e dokununca packages/core/src, packages/core/dist'ten
+ * yeni görünüyor ve check-release-ready'nin tazelik kontrolü "dist BAYAT"
+ * diyerek yayını durduruyordu — içerik değişmemiş, tek fark zaman damgası.
+ * v0.1.0'ın ikinci denemesi tam olarak burada düştü.
+ *
+ * Yalnızca gerçekten değişince yazmak, "yeniden üret ve karşılaştır" desenini
+ * doğası gereği yan etkisiz kılıyor: değişiklik yoksa ağaç hiç kirlenmiyor.
+ */
+let unchanged = false;
+try {
+  unchanged = readFileSync(outFile, 'utf8') === next;
+} catch {
+  unchanged = false;                       // dosya yok — ilk üretim
+}
+if (!unchanged) writeFileSync(outFile, next);
+
+console.log(`\n${unchanged ? 'Değişmedi' : 'Yazıldı'}: packages/core/src/generated/constants.ts`);
 console.log(`  ${BODY_NAMES.length} cisim, ${pick(/^SEFLG_/).length} bayrak, ` +
             `${pick(/^SE_SIDM_/).length} ayanamsa, ${houseSystems.length} ev sistemi`);
