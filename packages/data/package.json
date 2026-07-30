@@ -1,11 +1,9 @@
 {
   "name": "@kuntay/swisseph-data",
-  "version": "0.1.0-dev",
+  "version": "0.1.0",
   "description": "Swiss Ephemeris .se1 data files for 1800-2399 CE. Optional companion to @kuntay/swisseph — upgrades calculations from the built-in Moshier theory to the full JPL DE441-derived ephemeris.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
-  "private": true,
-  "_comment_private": "Faz 4'te (ephemeris yükleyici katmanı) tamamlanınca private kaldırılacak. Veri dosyaları henüz eklenmedi.",
   "exports": {
     "./sepl_18.se1": "./ephe/sepl_18.se1",
     "./semo_18.se1": "./ephe/semo_18.se1",

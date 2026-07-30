@@ -1,11 +1,9 @@
 {
   "name": "@kuntay/swisseph-asteroids",
-  "version": "0.1.0-dev",
+  "version": "0.1.0",
   "description": "Ephemeris files for 16 popular asteroids and dwarf planets (Eris, Sedna, Quaoar, Eros, Chariklo and more), 1500-2100 CE. Optional companion to @kuntay/swisseph.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
-  "private": true,
-  "_comment_private": "Faz 6'da (npm yayını) kaldırılacak.",
   "exports": {
     "./manifest.json": "./manifest.json",
     "./ephe/*": "./ephe/*"

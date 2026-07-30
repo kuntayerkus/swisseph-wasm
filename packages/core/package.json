@@ -1,11 +1,9 @@
 {
   "name": "@kuntay/swisseph",
-  "version": "0.1.0-dev",
+  "version": "0.1.0",
   "description": "Swiss Ephemeris 2.10.03 compiled to WebAssembly. High-precision astronomical and astrological calculations for Node.js, browsers, Deno and Bun.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
-  "private": true,
-  "_comment_private": "Faz 3 (altın referans doğrulaması) tamamlanınca kaldırılacak. Yayınlamadan önce sayısal parite kanıtlanmalı.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

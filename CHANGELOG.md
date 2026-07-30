@@ -7,10 +7,9 @@ All notable changes to this project are documented here. The format follows
 Note that the vendored Swiss Ephemeris version (`2.10.03`) is independent of
 this package's version; upstream changes are called out explicitly.
 
-## [Unreleased]
+## [0.1.0] — 2026-07-31
 
-Nothing published to npm yet. Everything below is the work leading to the first
-release.
+First release. Everything below is the work leading up to it.
 
 ### Added
 
