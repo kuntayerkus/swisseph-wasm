@@ -1,0 +1,165 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+
+    # Yerel geliştirmede tools/build-wasm.mjs bu imajı Docker üzerinden
+    # çağırıyor. CI'da doğrudan konteyner içinde çalışarak aynı emcc
+    # sürümünü kullanıyoruz — build çıktısı iki ortamda da özdeş olsun.
+    container:
+      image: emscripten/emsdk:latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Report toolchain
+        run: |
+          emcc --version | head -1
+          node --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build WASM
+        run: npm run build:wasm
+
+      # Sabitler swephexp.h'den + derlenmiş WASM'dan üretiliyor. Burada
+      # yeniden üretip commit'lenmiş halle karşılaştırıyoruz: upstream C
+      # değiştiğinde üretilmiş dosyanın bayatladığını CI yakalasın.
+      - name: Regenerate constants and check they are current
+        run: |
+          npm run build:constants
+          git diff --exit-code packages/core/src/generated/ \
+            || (echo "::error::generated/constants.ts bayat — 'npm run build:constants' çalıştırıp commit'leyin" && exit 1)
+
+      # Public runtime yüzeyinde Türkçe string literal olmamalı. Yorumlar
+      # kapsam dışı — onların Türkçe olması bilinçli bir karar. WASM ya da
+      # veri gerektirmediği için erken koşuyor: ucuz kontrol önce.
+      - name: Public surface is English
+        run: npm run check:language
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build TypeScript
+        run: npm run build:ts
+
+      - name: Smoke test (Moshier mode, no data files)
+        run: npm run check:smoke
+
+      # Veri dosyaları repoda yok (upstream ephe/ = 379 MB). 1800-2399 CE için
+      # gereken 5 dosyayı çekiyoruz — 2.05 MB.
+      - name: Fetch ephemeris files for full-precision tests
+        run: |
+          mkdir -p /tmp/ephe
+          base=https://raw.githubusercontent.com/aloistr/swisseph/master/ephe
+          for f in sepl_18.se1 semo_18.se1 seas_18.se1 sefstars.txt seorbel.txt; do
+            curl -fsSL --retry 3 -o "/tmp/ephe/$f" "$base/$f"
+          done
+          ls -la /tmp/ephe
+
+      - name: API check (includes instance isolation)
+        env:
+          SWISSEPH_EPHE_PATH: /tmp/ephe
+        run: npm run check:api
+
+      # Sayısal parite: commit'lenmiş altın korpus native gcc ile üretildi.
+      # Korpus 1500-2500 aralığına yayıldığı için üç dosya takımı gerekiyor.
+      - name: Fetch wider ephemeris range for the golden corpus
+        run: |
+          base=https://raw.githubusercontent.com/aloistr/swisseph/master/ephe
+          for f in sepl_12.se1 semo_12.se1 seas_12.se1 sepl_24.se1 semo_24.se1 seas_24.se1; do
+            curl -fsSL --retry 3 -o "/tmp/ephe/$f" "$base/$f"
+          done
+
+      - name: Numerical parity against native reference
+        env:
+          SWISSEPH_EPHE_PATH: /tmp/ephe
+        run: npm run check:golden
+
+      # Açıları Swiss Ephemeris'ten bağımsız olarak, küresel astronominin
+      # klasik formülleriyle doğrular. Altın korpus iki build'i karşılaştırır;
+      # bu, ortak bir hatayı da yakalayabilir.
+      - name: Angles against classical formulas
+        env:
+          SWISSEPH_EPHE_PATH: /tmp/ephe
+        run: npm run check:angles
+
+      - name: Assemble the data package
+        env:
+          SWISSEPH_EPHE_PATH: /tmp/ephe
+        run: npm run build:data
+
+      # Asteroid dosyaları upstream'de yalnızca Dropbox'ta ve bir HTTP
+      # aynasında bulunuyor; Dropbox betikle çekilemediği için ayna
+      # kullanılıyor.
+      #
+      # `continue-on-error: true` KALDIRILDI. Niyeti "ayna düşerse CI'yı
+      # bloke etme"ydi ama sonucu şuydu: paket kurulmuyor -> check-ephemeris
+      # asteroid bloğunu sessizce atlıyor -> asteroid tarafının TEK sayısal
+      # doğrulaması hiç koşmuyor -> CI yeşil. release.yml'de aynı adımda
+      # continue-on-error zaten yok, yani yayın hâlihazırda aynanın
+      # erişilebilirliğine bağlı; CI'da sessiz atlamaya izin vermenin bir
+      # kazancı yoktu. Ayna gerçekten kalıcı olarak düşerse doğru yanıt
+      # aynayı değiştirmek, kontrolü kör etmek değil.
+      - name: Assemble the asteroid package
+        run: npm run build:asteroids
+
+      # Dosya adı kuralını deneyle doğrular: hesaplanan dosyayı tek başına
+      # yükleyip Swiss Ephemeris'in Moshier'e düşmediğini teyit eder.
+      - name: Ephemeris loaders
+        env:
+          SWISSEPH_EPHE_PATH: /tmp/ephe
+        run: npm run check:ephemeris
+
+      # Yalnızca tarayıcıda ortaya çıkan hataları Node'da taklit ederek
+      # yakalar (ör. fetch'in "Illegal invocation" kısıtı).
+      - name: Browser-only code paths
+        env:
+          SWISSEPH_EPHE_PATH: /tmp/ephe
+        run: npm run check:browser
+
+      # Türetilmiş katmanın birim ve entegrasyon testleri (Vitest).
+      # Sabit yıldız kürasyonunu doğrulayan testler veri paketine ihtiyaç
+      # duyduğu için build:data adımından sonra çalışıyor.
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Verify data package spec
+        env:
+          SWISSEPH_EPHE_PATH: /tmp/ephe
+        run: npm run check:data
+
+      - name: Precision sweep (Moshier vs full ephemeris)
+        env:
+          SWISSEPH_EPHE_PATH: /tmp/ephe
+        run: npm run check:precision
+
+      # Her şey repo AĞACINDAN test edildi; kullanıcının gördüğü şey tarball.
+      # Aradaki fark "yerelde çalışır, yayında 404" hata sınıfının tamamı:
+      # `files`'tan düşmüş dosya, yanlış `exports` yolu, kırık source map.
+      # Bu adım paketleyip temiz bir dizine kurup gerçek bir hesap yapıyor.
+      - name: Published package shape
+        run: npm run check:pack
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build
+          path: |
+            packages/core/wasm/
+            packages/core/dist/
+          retention-days: 14

@@ -1,0 +1,59 @@
+{
+  "name": "@kuntay/swisseph",
+  "version": "0.1.0-dev",
+  "description": "Swiss Ephemeris 2.10.03 compiled to WebAssembly. High-precision astronomical and astrological calculations for Node.js, browsers, Deno and Bun.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "private": true,
+  "_comment_private": "Faz 3 (altın referans doğrulaması) tamamlanınca kaldırılacak. Yayınlamadan önce sayısal parite kanıtlanmalı.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./wasm": "./wasm/swisseph.wasm"
+  },
+  "files": [
+    "dist/",
+    "src/",
+    "wasm/swisseph.mjs",
+    "wasm/swisseph.wasm",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "keywords": [
+    "swiss-ephemeris",
+    "swisseph",
+    "ephemeris",
+    "astronomy",
+    "astrology",
+    "wasm",
+    "webassembly",
+    "horoscope",
+    "natal-chart",
+    "planetary-positions"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kuntayerkus/swisseph-wasm.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/kuntayerkus/swisseph-wasm#readme",
+  "bugs": "https://github.com/kuntayerkus/swisseph-wasm/issues",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

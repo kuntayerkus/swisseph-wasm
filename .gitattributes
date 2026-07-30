@@ -1,0 +1,14 @@
+# Depoda satır sonu her zaman LF.
+#
+# Geliştirme Windows'ta, CI ise Linux konteynerinde yapılıyor. Her iki iş
+# akışı da üretilmiş dosyaları yeniden üretip `git diff --exit-code` ile
+# karşılaştırıyor (packages/core/src/generated/). Satır sonu normalizasyonu
+# platforma bırakılırsa o diff, içerik özdeş olsa bile CRLF/LF farkından
+# dolayı düşer ve "constants bayat" diye yanlış bir hata verir.
+* text=auto eol=lf
+
+# İkili dosyalar — dönüştürme uygulanmamalı, aksi halde bozulurlar.
+*.wasm binary
+*.se1 binary
+*.eph binary
+*.tgz binary

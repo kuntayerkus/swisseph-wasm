@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    // ESNext.Disposable, dispose() için Symbol.dispose desteğini getiriyor.
+    "lib": ["ES2022", "ESNext.Disposable", "DOM"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    "strict": true,
+    // Ölü kod bir kritik hataya yol açtı: mcp/src/time.ts'deki daysInMonth()
+    // yazılmış, doğru ve HİÇ ÇAĞRILMAMIŞTI, dolayısıyla geçersiz takvim
+    // tarihleri sessizce kayıyordu. Bu iki bayrak tam olarak onu yakalar.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": false,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": false,
+
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    /*
+     * Map'ler ancak src/ ile birlikte işe yarıyor.
+     *
+     * Eskiden src/ paketin `files` alanında yoktu, dolayısıyla yayınlanan 40
+     * map dosyası (139 KB) var olmayan bir hedefi gösteriyordu: hem yer
+     * kaplıyor hem çalışmıyordu.
+     *
+     * Çözüm olarak `inlineSources` denendi ve ÖLÇÜLDÜ: .js.map kendi
+     * kaynağını taşımaya başlıyor ama .d.ts.map TAŞIMIYOR — inlineSources
+     * bildirim map'lerine uygulanmıyor — yani "go to definition" hâlâ kırık
+     * kalıyordu, üstelik tarball 405 KB'dan 484 KB'a çıkıyordu.
+     *
+     * src/ yayınlamak ikisini birden çözüyor ve daha küçük: 460 KB, ve HER
+     * İKİ map de gerçek bir dosyaya çözülüyor (temiz kurulumda doğrulandı).
+     * AGPL-3.0 ile de uyumlu — kaynağın erişilebilir olması zaten gerekiyor.
+     */
+    "outDir": "./dist",
+    "rootDir": "./src",
+
+    "allowJs": false,
+    "skipLibCheck": true,
+    "types": ["node"],
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

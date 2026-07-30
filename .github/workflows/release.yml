@@ -1,0 +1,128 @@
+name: Release
+
+# Sürüm etiketi itildiğinde çalışır: v0.1.0, v1.2.3 …
+#
+# Yayın, TÜM kontroller ve testler geçmeden yapılmaz. Bu kütüphanenin tek
+# değer önermesi sayıların doğru olması; doğrulanmamış bir sürüm yayınlamak
+# o önermeyi geçersiz kılar.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dryRun:
+        description: 'Yayınlamadan sadece doğrula'
+        type: boolean
+        default: true
+
+jobs:
+  verify:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    container:
+      image: emscripten/emsdk:latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: npm ci
+
+      - name: Etiket ile paket sürümleri uyuşuyor mu
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: node tools/check-release-ready.mjs "${GITHUB_REF_NAME#v}"
+
+      - run: npm run build
+
+      - name: Üretilmiş sabitler güncel mi
+        run: |
+          npm run build:constants
+          git diff --exit-code packages/core/src/generated/ \
+            || (echo "::error::generated/constants.ts bayat" && exit 1)
+
+      - name: Efemeris dosyalarını getir
+        run: |
+          mkdir -p /tmp/ephe
+          base=https://raw.githubusercontent.com/aloistr/swisseph/master/ephe
+          for f in sepl_12.se1 semo_12.se1 seas_12.se1 \
+                   sepl_18.se1 semo_18.se1 seas_18.se1 \
+                   sepl_24.se1 semo_24.se1 seas_24.se1 \
+                   sefstars.txt seorbel.txt; do
+            curl -fsSL --retry 3 -o "/tmp/ephe/$f" "$base/$f"
+          done
+
+      - name: Veri paketlerini kur
+        env:
+          SWISSEPH_EPHE_PATH: /tmp/ephe
+        run: |
+          npm run build:data
+          npm run build:asteroids
+
+      - name: Tüm kontroller
+        env:
+          SWISSEPH_EPHE_PATH: /tmp/ephe
+        run: npm run check
+
+      - name: Testler
+        run: npm test
+
+      - name: Yayınlanacak içeriği listele
+        run: |
+          for pkg in core data asteroids mcp; do
+            echo "--- packages/$pkg ---"
+            npm pack --dry-run --workspace "./packages/$pkg" 2>&1 | tail -30
+          done
+
+      # MCP'nin dist/'i de buraya giriyor: publish işi yalnızca bu artefaktı
+      # indiriyor, yeniden derlemiyor. Listede olmayan bir paket boş dist ile
+      # yayınlanır ve bunu ancak kullanıcı fark eder.
+      - name: Artefaktları sakla
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-build
+          path: |
+            packages/core/wasm/
+            packages/core/dist/
+            packages/data/
+            packages/asteroids/
+            packages/mcp/dist/
+          retention-days: 30
+
+  publish:
+    name: Publish to npm
+    needs: verify
+    # Yalnızca etiket itildiğinde ve manuel çalıştırmada dryRun kapalıysa.
+    if: startsWith(github.ref, 'refs/tags/v') && inputs.dryRun != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write        # npm provenance için OIDC
+    environment: npm-publish  # onay kapısı: repo ayarlarından zorunlu kılın
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-build
+          path: packages/
+
+      - run: npm ci --ignore-scripts
+
+      # Sıra önemli: core önce, veri paketleri ona atıf yapıyor. MCP sunucusu
+      # core'a tam sürümle bağlı olduğu için en sonda.
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm publish --workspace ./packages/core --provenance --access public
+          npm publish --workspace ./packages/data --provenance --access public
+          npm publish --workspace ./packages/asteroids --provenance --access public
+          npm publish --workspace ./packages/mcp --provenance --access public

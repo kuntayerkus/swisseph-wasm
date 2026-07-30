@@ -1,0 +1,53 @@
+{
+  "name": "swisseph-monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Swiss Ephemeris compiled to WebAssembly, with a typed JavaScript API",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kuntayerkus/swisseph-wasm.git"
+  },
+  "homepage": "https://github.com/kuntayerkus/swisseph-wasm#readme",
+  "bugs": "https://github.com/kuntayerkus/swisseph-wasm/issues",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build:wasm": "node tools/build-wasm.mjs",
+    "build:constants": "node tools/generate-constants.mjs",
+    "build:stars": "node tools/generate-stars.mjs",
+    "build:ts": "npm run build --workspace @kuntay/swisseph && npm run build --workspace @kuntay/swisseph-mcp",
+    "build": "npm run build:wasm && npm run build:constants && npm run build:ts",
+    "build:golden": "node tools/generate-golden.mjs",
+    "build:data": "node tools/build-data-package.mjs",
+    "build:asteroids": "node tools/build-asteroid-package.mjs",
+    "typecheck": "npm run typecheck --workspace @kuntay/swisseph && npm run typecheck --workspace @kuntay/swisseph-mcp",
+    "test": "npm run build:ts && vitest run",
+    "test:watch": "vitest",
+    "demo": "node examples/browser/serve.mjs",
+    "check:smoke": "node tools/check-smoke.mjs",
+    "check:api": "node tools/check-api.mjs",
+    "check:golden": "node tools/check-golden.mjs",
+    "check:angles": "node tools/check-angles-independent.mjs",
+    "check:ephemeris": "node tools/check-ephemeris.mjs",
+    "check:sect": "node tools/check-sect-exactness.mjs",
+    "check:browser": "node tools/check-browser-paths.mjs",
+    "check:data": "node tools/check-data-package.mjs",
+    "check:precision": "node tools/check-precision-sweep.mjs",
+    "check:language": "node tools/check-public-language.mjs",
+    "check:pack": "node tools/check-pack.mjs",
+    "check": "npm run check:language && npm run check:smoke && npm run check:api && npm run check:golden && npm run check:angles && npm run check:ephemeris && npm run check:sect && npm run check:browser && npm run check:data && npm run check:precision && npm run check:pack",
+    "check:release": "node tools/check-release-ready.mjs",
+    "mcp": "node packages/mcp/dist/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  }
+}

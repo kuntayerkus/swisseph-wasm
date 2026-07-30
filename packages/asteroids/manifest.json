@@ -1,0 +1,127 @@
+{
+  "package": "@kuntay/swisseph-asteroids",
+  "swissEphemerisVersion": "2.10.03",
+  "jplEphemeris": "DE441",
+  "source": "https://github.com/aloistr/swisseph (Astrodienst)",
+  "generatedAt": "2026-07-29",
+  "coverage": {
+    "fromYear": 1500,
+    "toYear": 2100
+  },
+  "fileKind": "short",
+  "totalBytes": 418818,
+  "asteroids": [
+    {
+      "number": 5,
+      "name": "Astraea",
+      "file": "se00005s.se1",
+      "bytes": 41688,
+      "sha256": "fe62a2091c88c4a39d429027987b99ef4a2c37f413f0f9bc77c65466a665032b"
+    },
+    {
+      "number": 10,
+      "name": "Hygiea",
+      "file": "se00010s.se1",
+      "bytes": 34236,
+      "sha256": "dc58fe8d2f98ae63e3c37bbac1f6c57b6be3a0fb2effb84bba7202f7f9bb327b"
+    },
+    {
+      "number": 16,
+      "name": "Psyche",
+      "file": "se00016s.se1",
+      "bytes": 36130,
+      "sha256": "494ceb60d14147ad8cbaa7a9a3242cc8ac410ab47e2dc9e91d6badd2d1d2527c"
+    },
+    {
+      "number": 433,
+      "name": "Eros",
+      "file": "se00433s.se1",
+      "bytes": 93779,
+      "sha256": "6eb9c8ac6e14347d6f8980b562b2b701d1eb9d529c0dd77bac5f2b563daf0b00"
+    },
+    {
+      "number": 1181,
+      "name": "Lilith",
+      "file": "se01181s.se1",
+      "bytes": 40905,
+      "sha256": "cbc77938627e92358320f4fb3cd260f9d08585e41a559ce490a6f9d10f034dd6"
+    },
+    {
+      "number": 7066,
+      "name": "Nessus",
+      "file": "se07066s.se1",
+      "bytes": 17772,
+      "sha256": "92142312772073c6377501dd0f81a7d8c95bf354f37f92c7b0d47435577bb0c8"
+    },
+    {
+      "number": 10199,
+      "name": "Chariklo",
+      "file": "se10199s.se1",
+      "bytes": 19830,
+      "sha256": "9b8ffcbad4350e493045ac53f096e9b73282a076f8b7ec140af2c68f6edce5d8"
+    },
+    {
+      "number": 20000,
+      "name": "Varuna",
+      "file": "se20000s.se1",
+      "bytes": 15777,
+      "sha256": "023d1bee812ae6877634591dc10815784cd469e447a423066df8f3dec8efcae2"
+    },
+    {
+      "number": 28978,
+      "name": "Ixion",
+      "file": "se28978s.se1",
+      "bytes": 16210,
+      "sha256": "7a42d3288a6fc639057f43fee4bcf41f58ad1871fa5abff9e4318b8fef726eea"
+    },
+    {
+      "number": 50000,
+      "name": "Quaoar",
+      "file": "se50000s.se1",
+      "bytes": 15752,
+      "sha256": "375d366d70369a5f23cb26c0eb68cd34cdf7af5f3e43d66387cffe84b7c443a9"
+    },
+    {
+      "number": 90377,
+      "name": "Sedna",
+      "file": "se90377s.se1",
+      "bytes": 10279,
+      "sha256": "6bdaeb90e7c9ec4d2bf50341ebb876f7e5a24d1f64f81943565d9f64d9911373"
+    },
+    {
+      "number": 90482,
+      "name": "Orcus",
+      "file": "se90482s.se1",
+      "bytes": 16133,
+      "sha256": "d524eb964f7e00ed834cc6c6647fbb11394c2592d4b80c969e888419f4a98dfa"
+    },
+    {
+      "number": 136108,
+      "name": "Haumea",
+      "file": "s136108s.se1",
+      "bytes": 15768,
+      "sha256": "4886fda88a5c41ab7891865814c8ba758665e83e33e77e7c40c3ce7e95a5c5fe"
+    },
+    {
+      "number": 136199,
+      "name": "Eris",
+      "file": "s136199s.se1",
+      "bytes": 14499,
+      "sha256": "6c5a853ca59df0b67c705d11d81a7e8688a1c3c937a1a55308365f95e641316c"
+    },
+    {
+      "number": 136472,
+      "name": "Makemake",
+      "file": "s136472s.se1",
+      "bytes": 15527,
+      "sha256": "fb4bf2fa2a8cf7b1fdbecce299bb33e3b738e5bd29b355b942640c234fa3d3dc"
+    },
+    {
+      "number": 225088,
+      "name": "Gonggong",
+      "file": "s225088s.se1",
+      "bytes": 14533,
+      "sha256": "c49eb72eea769295e7255403d366c7c6a6223fc02fa75efeee56ab483d8e1639"
+    }
+  ]
+}

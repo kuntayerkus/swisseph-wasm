@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>swisseph-wasm — tarayıcı demosu</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff; --fg: #1a1a1a; --muted: #6b6b6b;
+    --line: #e2e2e2; --accent: #b45309; --ok: #15803d; --warn: #b45309;
+    --panel: #fafafa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16161a; --fg: #e8e8ea; --muted: #9a9aa2;
+      --line: #2c2c33; --accent: #f0b429; --ok: #4ade80; --warn: #f0b429;
+      --panel: #1c1c21;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem 1.25rem; background: var(--bg); color: var(--fg);
+    font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  main { max-width: 60rem; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+  h2 { font-size: 1rem; margin: 2rem 0 .75rem; letter-spacing: .02em;
+       text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .sub { color: var(--muted); margin: 0 0 1.5rem; }
+  fieldset { border: 1px solid var(--line); border-radius: 8px; padding: 1rem;
+             margin: 0 0 1rem; background: var(--panel); }
+  legend { padding: 0 .4rem; color: var(--muted); font-size: .8rem;
+           text-transform: uppercase; letter-spacing: .04em; }
+  .row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: flex-end; }
+  label { display: flex; flex-direction: column; gap: .25rem; font-size: .8rem;
+          color: var(--muted); }
+  input { font: inherit; padding: .4rem .5rem; border: 1px solid var(--line);
+          border-radius: 5px; background: var(--bg); color: var(--fg); width: 8rem; }
+  button { font: inherit; padding: .45rem .9rem; border: 1px solid var(--line);
+           border-radius: 5px; background: var(--bg); color: var(--fg); cursor: pointer; }
+  button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: .3rem .6rem .3rem 0; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 500; font-size: .78rem;
+       text-transform: uppercase; letter-spacing: .03em; }
+  td.num { text-align: right; padding-right: 1.2rem; }
+  .tag { font-size: .72rem; padding: .1rem .4rem; border-radius: 3px;
+         border: 1px solid currentColor; }
+  .tag.swiss { color: var(--ok); }
+  .tag.moshier { color: var(--warn); }
+  .r { color: var(--accent); font-weight: 600; }
+  #status { font-size: .85rem; color: var(--muted); min-height: 1.4rem; margin: .5rem 0 0; }
+  #used { font-size: .8rem; color: var(--muted); margin: .75rem 0 0;
+          font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  select { font: inherit; padding: .4rem .5rem; border: 1px solid var(--line);
+           border-radius: 5px; background: var(--bg); color: var(--fg); }
+  .miss { color: var(--muted); font-style: italic; }
+  .scroll { overflow-x: auto; }
+  footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
+           color: var(--muted); font-size: .8rem; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>swisseph-wasm</h1>
+  <p class="sub">
+    Swiss Ephemeris 2.10.03, WebAssembly. Bu sayfa tarayıcı yolunu doğrular:
+    WASM yükleme, sanal dosya sistemi, <code>FetchEphemeris</code> ve
+    <code>BrowserCache</code>.
+    <br><strong>Saati YEREL girin</strong> ve saat dilimini ayrıca belirtin —
+    başka bir programla karşılaştırıyorsanız farkların en yaygın sebebi budur.
+  </p>
+
+  <fieldset>
+    <legend>Doğum verisi</legend>
+    <div class="row">
+      <label>Tarih<input id="date" type="date" value="1990-05-15" style="width:10rem"></label>
+      <label>Yerel saat<input id="time" type="time" value="14:30" style="width:7rem"></label>
+      <label title="Doğum yerinin UTC'ye göre farkı. Türkiye yazın +3, kışın +2 idi.">
+        Saat dilimi<input id="tz" type="number" step="0.5" value="3" style="width:5rem"></label>
+      <label>Enlem <span style="color:var(--muted)">(K +)</span>
+        <input id="lat" type="number" step="0.01" value="39.93"></label>
+      <label>Boylam <span style="color:var(--muted)">(D +)</span>
+        <input id="lon" type="number" step="0.01" value="32.86"></label>
+      <label>Ev sistemi<select id="hsys" style="width:11rem"></select></label>
+      <button id="calc">Hesapla</button>
+      <button id="load">Tam hassasiyet yükle</button>
+    </div>
+    <p id="used"></p>
+    <p id="status">Modül yükleniyor…</p>
+  </fieldset>
+
+  <h2>Gök cisimleri</h2>
+  <div class="scroll"><table id="planets"><tbody></tbody></table></div>
+
+  <h2>Evler ve açılar</h2>
+  <div class="scroll"><table id="houses"><tbody></tbody></table></div>
+
+  <h2>Arap noktaları</h2>
+  <div class="scroll"><table id="lots"><tbody></tbody></table></div>
+
+  <h2>Kraliyet yıldızları</h2>
+  <div class="scroll"><table id="stars"><tbody></tbody></table></div>
+
+  <footer>
+    AGPL-3.0-or-later. Swiss Ephemeris: Dieter Koch ve Alois Treindl,
+    Astrodienst AG. Veri NASA/JPL DE441'den türetilmiştir.
+  </footer>
+</main>
+
+<script type="module">
+import {
+  createSwissEph, Body, HouseSystem, HOUSE_SYSTEM_NAMES, ROYAL_STARS,
+  byDesignation, FetchEphemeris, BrowserCache,
+} from '../../packages/core/dist/index.js';
+
+const $ = (id) => document.getElementById(id);
+const status = $('status');
+const say = (text) => { status.textContent = text; };
+
+const SIGN_TR = ['Koç','Boğa','İkizler','Yengeç','Aslan','Başak',
+                 'Terazi','Akrep','Yay','Oğlak','Kova','Balık'];
+const BODIES = [
+  ['Güneş', Body.Sun], ['Ay', Body.Moon], ['Merkür', Body.Mercury],
+  ['Venüs', Body.Venus], ['Mars', Body.Mars], ['Jüpiter', Body.Jupiter],
+  ['Satürn', Body.Saturn], ['Uranüs', Body.Uranus], ['Neptün', Body.Neptune],
+  ['Plüton', Body.Pluto],
+  ['Kuzey Ay Düğümü (gerçek)', Body.NorthNodeTrue],
+  ['Kuzey Ay Düğümü (ortalama)', Body.NorthNodeMean],
+  ['Lilith (BML ortalama)', Body.BlackMoonLilithMean],
+  ['Chiron', Body.Chiron],
+];
+
+/**
+ * Dereceyi derece-dakika-saniye olarak yazar: 12.3428 -> 12°20'34"
+ *
+ * Saniyeyi de gösteriyoruz çünkü dakikaya yuvarlamak başka yazılımlarla
+ * karşılaştırmayı bozuyor: astroloji programları gösterilen hassasiyete
+ * KESER, yuvarlamaz. 24°22'34" bizde 24°23' görünürken Solar Fire'da
+ * 24°22' görünüyordu — aynı değer, 1 dakikalık sahte fark. Saniye
+ * gösterilince yuvarlanacak bir şey kalmıyor.
+ */
+const dms = (deg) => {
+  const d = Math.floor(deg);
+  let rest = (deg - d) * 60;
+  let m = Math.floor(rest);
+  let s = Math.round((rest - m) * 60);
+  // Saniye 60'a yuvarlanırsa taşımayı elle yap.
+  if (s === 60) { s = 0; m += 1; }
+  if (m === 60) { return `${d + 1}°00'00"`; }
+  return `${d}°${String(m).padStart(2, '0')}'${String(s).padStart(2, '0')}"`;
+};
+
+const position = (lon) => {
+  const i = Math.floor(lon / 30);
+  return `${dms(lon - i * 30)} ${SIGN_TR[i]}`;
+};
+
+function render(id, header, rows) {
+  const table = $(id);
+  table.innerHTML =
+    `<thead><tr>${header.map((h) => `<th>${h}</th>`).join('')}</tr></thead>` +
+    `<tbody>${rows.map((r) => `<tr>${r.join('')}</tr>`).join('')}</tbody>`;
+}
+
+// Ev sistemi seçicisi — adlar kütüphaneden, elle liste tutmuyoruz.
+for (const [code, name] of Object.entries(HOUSE_SYSTEM_NAMES)) {
+  const option = document.createElement('option');
+  option.value = code;
+  option.textContent = `${name} (${code})`;
+  if (code === HouseSystem.Placidus) option.selected = true;
+  $('hsys').append(option);
+}
+
+let swe;
+
+try {
+  swe = await createSwissEph();
+  say(`Swiss Ephemeris ${swe.version} yüklendi. Efemeris dosyası yok — ` +
+      `dahili Moshier teorisi kullanılıyor.`);
+  window.__swe = swe;                    // otomatik doğrulama için
+  window.__ready = true;
+} catch (error) {
+  say(`Modül yüklenemedi: ${error.message}`);
+  window.__error = String(error);
+  throw error;
+}
+
+function compute() {
+  const [y, m, d] = $('date').value.split('-').map(Number);
+  const [hh, mm] = $('time').value.split(':').map(Number);
+  const tz = Number($('tz').value);
+  const lat = Number($('lat').value);
+  const lon = Number($('lon').value);
+  const hsys = $('hsys').value;
+
+  // Saat YEREL giriliyor; Swiss Ephemeris Evrensel Zaman istiyor.
+  // Başka bir programla karşılaştırırken farkların en yaygın sebebi bu
+  // dönüşümün atlanması, o yüzden kullanılan UT'yi ekranda gösteriyoruz.
+  const localHours = hh + mm / 60;
+  const utHours = localHours - tz;
+  const jd = swe.julianDay(y, m, d, utHours);
+
+  const back = swe.calendarDate(jd);
+  const utClock = `${String(Math.floor(back.hour)).padStart(2, '0')}:` +
+                  `${String(Math.round((back.hour % 1) * 60)).padStart(2, '0')}`;
+  $('used').textContent =
+    `UT ${back.year}-${String(back.month).padStart(2, '0')}-` +
+    `${String(back.day).padStart(2, '0')} ${utClock}  ·  ` +
+    `JD ${jd.toFixed(6)}  ·  ΔT ${(swe.deltaT(jd) * 86400).toFixed(1)} sn  ·  ` +
+    `${lat}° ${lat >= 0 ? 'K' : 'G'}, ${Math.abs(lon)}° ${lon >= 0 ? 'D' : 'B'}`;
+
+  // --- gök cisimleri ---
+  // Cisim başına hata yakalıyoruz: Chiron ve asteroidler seas_*.se1
+  // gerektiriyor ve Moshier karşılıkları YOK. Tek bir eksik dosya bütün
+  // haritayı çökertmemeli.
+  render('planets', ['Cisim', 'Konum', 'Hız', 'Kaynak'],
+    BODIES.map(([name, body]) => {
+      let p;
+      try {
+        p = swe.calcWithSign(jd, body);
+      } catch (error) {
+        return [
+          `<td>${name}</td>`,
+          `<td colspan="3" class="miss">efemeris dosyası gerekli ` +
+          `(${String(error.message).match(/'([^']+)'/)?.[1] ?? 'bilinmiyor'})</td>`,
+        ];
+      }
+      return [
+        `<td>${name}</td>`,
+        `<td class="num">${position(p.longitude)}${p.retrograde ? ' <span class="r">R</span>' : ''}</td>`,
+        `<td class="num">${p.longitudeSpeed.toFixed(4)}°/g</td>`,
+        `<td><span class="tag ${p.ephemeris}">${p.ephemeris}</span></td>`,
+      ];
+    }));
+
+  // --- evler ---
+  const h = swe.houses(jd, lat, lon, hsys);
+  const angles = [
+    ['Yükselen', h.ascendant], ['Tepe Noktası (MC)', h.midheaven],
+    ['Alçalan', (h.ascendant + 180) % 360], ['IC', (h.midheaven + 180) % 360],
+    ['Vertex', h.vertex],
+  ];
+  render('houses', ['', 'Konum', '', 'Konum'],
+    h.cusps.map((cusp, i) => [
+      `<td>${i + 1}. ev</td>`,
+      `<td class="num">${position(cusp)}</td>`,
+      `<td>${angles[i] ? angles[i][0] : ''}</td>`,
+      `<td class="num">${angles[i] ? position(angles[i][1]) : ''}</td>`,
+    ]));
+
+  if (h.substituted) {
+    say(`${status.textContent}  ⚠ Ev sistemi değiştirildi: ${h.warning}`);
+  }
+
+  // --- loturlar ---
+  const { sect, lots } = swe.lots(jd, { latitude: lat, longitude: lon, houseSystem: hsys });
+  render('lots', ['Nokta', 'Konum', 'Sekt', 'Kaynak'],
+    Object.values(lots).map((lot) => [
+      `<td>${lot.name}</td>`,
+      `<td class="num">${position(lot.longitude)}</td>`,
+      `<td>${lot.sectDependent ? (sect.sect === 'day' ? 'gündüz' : 'gece') : '—'}</td>`,
+      `<td style="color:var(--muted);font-size:.8rem">${lot.source}</td>`,
+    ]));
+
+  // --- kraliyet yıldızları ---
+  // Adlandırmayla arıyoruz: sefstars.txt bazı yıldızları iki yazımla içeriyor.
+  render('stars', ['Yıldız', 'Konum', 'Kadir', 'Anlam'],
+    ROYAL_STARS.map((star) => {
+      try {
+        const s = swe.fixedStar(byDesignation(star.designation), jd);
+        return [
+          `<td>${star.name}</td>`,
+          `<td class="num">${position(s.longitude)}</td>`,
+          `<td class="num">${star.magnitude.toFixed(2)}</td>`,
+          `<td style="color:var(--muted);font-size:.8rem">${star.meaning ?? ''}</td>`,
+        ];
+      } catch {
+        return [`<td>${star.name}</td>`,
+                `<td colspan="3" style="color:var(--muted)">sefstars.txt gerekli</td>`];
+      }
+    }));
+
+  const isDay = sect.sect === 'day';
+  return { jd, sect: sect.sect, ephemeris: swe.calc(jd, Body.Mars).ephemeris, isDay };
+}
+
+/**
+ * Handler'ları sarmalıyoruz: sarmasız bir istisna sessizce yutulur ve
+ * kullanıcıya "düğme çalışmıyor" gibi görünür. Hata varsa ekranda görünmeli.
+ */
+function guard(fn) {
+  return async (...args) => {
+    try {
+      await fn(...args);
+    } catch (error) {
+      say(`Hata: ${error.message}`);
+      window.__error = String(error);
+      console.error(error);
+    }
+  };
+}
+
+$('calc').addEventListener('click', guard(() => {
+  const started = performance.now();
+  const info = compute();
+  const ms = (performance.now() - started).toFixed(1);
+  // Girdi değişmediyse tablolar aynı kalır; bu satır düğmenin gerçekten
+  // çalıştığını görünür kılıyor.
+  say(`Hesaplandı (${ms} ms) — ${info.isDay ? 'gündüz' : 'gece'} haritası, ` +
+      `efemeris: ${info.ephemeris}, ${new Date().toLocaleTimeString('tr-TR')}`);
+  flash();
+}));
+
+/** Sonuç bölümlerini kısaca vurgula — hesabın yenilendiği belli olsun. */
+function flash() {
+  for (const id of ['planets', 'houses', 'lots', 'stars']) {
+    const el = $(id);
+    el.style.transition = 'none';
+    el.style.opacity = '0.35';
+    requestAnimationFrame(() => {
+      el.style.transition = 'opacity .35s';
+      el.style.opacity = '1';
+    });
+  }
+}
+
+$('load').addEventListener('click', guard(async () => {
+  const button = $('load');
+  button.disabled = true;
+  say('Efemeris dosyaları indiriliyor…');
+  try {
+    const [y] = $('date').value.split('-').map(Number);
+    const source = new FetchEphemeris({
+      baseUrl: '/ephe',                  // yerel sunucu; üretimde jsDelivr
+      cache: BrowserCache.create(),
+    });
+    const result = await swe.loadEphemeris(source, {
+      fromYear: y, fixedStars: true,
+    });
+    say(`${result.loaded.length} dosya yüklendi ` +
+        `(${(result.bytes / 1024 / 1024).toFixed(2)} MB)` +
+        (result.missing.length ? `, ${result.missing.length} bulunamadı` : '') +
+        '. Yeniden hesaplanıyor…');
+    window.__loaded = result;
+    const info = compute();
+    say(`Tam hassasiyet etkin. Efemeris: ${info.ephemeris}. ` +
+        `${info.isDay ? 'Gündüz' : 'Gece'} haritası.`);
+  } catch (error) {
+    say(`Yükleme başarısız: ${error.message}`);
+    window.__error = String(error);
+  } finally {
+    button.disabled = false;
+  }
+}));
+
+try {
+  compute();
+  say(`Swiss Ephemeris ${swe.version} hazır. Dosyasız Moshier modu — tam ` +
+      `hassasiyet için "Tam hassasiyet yükle" düğmesine basın.`);
+} catch (error) {
+  say(`İlk hesap başarısız: ${error.message}`);
+  window.__error = String(error);
+  console.error(error);
+}
+</script>
+</body>
+</html>

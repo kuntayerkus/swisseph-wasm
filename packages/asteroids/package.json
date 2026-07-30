@@ -1,0 +1,41 @@
+{
+  "name": "@kuntay/swisseph-asteroids",
+  "version": "0.1.0-dev",
+  "description": "Ephemeris files for 16 popular asteroids and dwarf planets (Eris, Sedna, Quaoar, Eros, Chariklo and more), 1500-2100 CE. Optional companion to @kuntay/swisseph.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "private": true,
+  "_comment_private": "Faz 6'da (npm yayını) kaldırılacak.",
+  "exports": {
+    "./manifest.json": "./manifest.json",
+    "./ephe/*": "./ephe/*"
+  },
+  "files": [
+    "ephe/",
+    "manifest.json",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "keywords": [
+    "swiss-ephemeris",
+    "asteroids",
+    "dwarf-planets",
+    "eris",
+    "sedna",
+    "chiron",
+    "astrology",
+    "ephemeris-data"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kuntayerkus/swisseph-wasm.git",
+    "directory": "packages/asteroids"
+  },
+  "homepage": "https://github.com/kuntayerkus/swisseph-wasm#readme",
+  "bugs": "https://github.com/kuntayerkus/swisseph-wasm/issues",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

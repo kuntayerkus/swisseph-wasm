@@ -1,0 +1,50 @@
+{
+  "package": "@kuntay/swisseph-data",
+  "version": "0.1.0-dev",
+  "swissEphemerisVersion": "2.10.03",
+  "jplEphemeris": "DE441",
+  "generatedAt": "2026-07-29",
+  "totalBytes": 2154517,
+  "coverage": {
+    "fromYear": 1800,
+    "toYear": 2399
+  },
+  "files": [
+    {
+      "file": "sepl_18.se1",
+      "kind": "planets",
+      "fromYear": 1800,
+      "toYear": 2399,
+      "bytes": 484061,
+      "sha256": "ca1393ceab3a44fbc895887cf789c68819ae6a1cbc9b22225872dbe4ccd99a66"
+    },
+    {
+      "file": "semo_18.se1",
+      "kind": "moon",
+      "fromYear": 1800,
+      "toYear": 2399,
+      "bytes": 1304771,
+      "sha256": "1ca07bd67c24374d77226180c20a4f9996cba013697894810518e7eb582ca4f7"
+    },
+    {
+      "file": "seas_18.se1",
+      "kind": "asteroids",
+      "fromYear": 1800,
+      "toYear": 2399,
+      "bytes": 223004,
+      "sha256": "a2cd8fc33807c78ca9a700c91c2e042258b12fc4796519e00781440b5ad8b2e2"
+    },
+    {
+      "file": "sefstars.txt",
+      "kind": "fixedStars",
+      "bytes": 136618,
+      "sha256": "18b0dcafbe5b7240773daba2c038a325f5b3fc4163f61e0a7f4e92abd4f517c6"
+    },
+    {
+      "file": "seorbel.txt",
+      "kind": "fictitiousBodies",
+      "bytes": 6063,
+      "sha256": "97b454ff78f4f4716b5cc987a93ca8f33e44ef4b524a165a155a8a4885fd2e18"
+    }
+  ]
+}

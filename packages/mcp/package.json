@@ -1,0 +1,61 @@
+{
+  "name": "@kuntay/swisseph-mcp",
+  "version": "0.1.0-dev",
+  "description": "Model Context Protocol server for Swiss Ephemeris. Gives an LLM exact astronomical and astrological calculations instead of plausible-looking guesses.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "private": true,
+  "_comment_private": "Çekirdek paketle birlikte yayınlanacak; yayın kararı kullanıcıya ait.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "swisseph-mcp": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist/",
+    "src/",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@kuntay/swisseph": "0.1.0-dev",
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "zod": "3.25.76"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "swiss-ephemeris",
+    "astrology",
+    "astronomy",
+    "llm",
+    "claude",
+    "natal-chart"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kuntayerkus/swisseph-wasm.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/kuntayerkus/swisseph-wasm#readme",
+  "bugs": "https://github.com/kuntayerkus/swisseph-wasm/issues",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
