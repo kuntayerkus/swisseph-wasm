@@ -40,6 +40,24 @@ const ALLOWED = new Set(['packages/core/src/derived/lot-names-tr.ts']);
 
 const TURKISH = /[çğıİöşüÇĞÖŞÜ]/;
 
+/*
+ * AKSANSIZ TÜRKÇE.
+ *
+ * Yukarıdaki sınıf yalnızca Türkçe'ye ÖZGÜ HARFLERİ arıyor. ASCII ile yazılmış
+ * Türkçe kelimeler bu elekten geçiyordu — ve geçti: 0.1.0 iki tanesini public
+ * API'ye taşıdı, `MemoryEphemeris.description = 'bellek'` ve
+ * `NodeFsEphemeris.description = \`dosya sistemi(...)\``. İkisi de tam olarak
+ * bu betiğin engellemek için var olduğu şeydi; denetim yeşil verdi çünkü
+ * kelimelerin hiçbirinde ç/ğ/ı/ö/ş/ü yok.
+ *
+ * Liste kasten dar tutuldu: yalnızca İngilizce'de aynı yazımla bir anlamı
+ * OLMAYAN kelimeler. "var", "ile", "ay", "an" gibi kodla ya da İngilizce
+ * metinle çakışabilecek olanlar bilerek dışarıda — yanlış pozitif, denetimi
+ * kapatmanın en hızlı yolu.
+ */
+const TURKISH_ASCII =
+  /\b(bellek|dosya|sistemi|hata|kaynak|hedef|boyut|deger|sayi|liste|eksik|gerekli|gerekiyor|bulunamadi|gecersiz|tanimsiz|yuklendi|okundu|basarisiz|desteklenmiyor|olmali|yazildi)\b/i;
+
 /** Tek/çift/ters tırnaklı string literal — kaçışlı tırnakları hesaba katarak. */
 const STRING_LITERAL = new RegExp(
   "'(?:[^'\\\\]|\\\\.)*'" + '|"(?:[^"\\\\]|\\\\.)*"' + '|`(?:[^`\\\\]|\\\\.)*`',
@@ -82,7 +100,7 @@ function offendingLines(file) {
 
     const code = lines[i].replace(/\/\/.*$/, '');
     for (const literal of code.match(STRING_LITERAL) ?? []) {
-      if (TURKISH.test(literal)) {
+      if (TURKISH.test(literal) || TURKISH_ASCII.test(literal)) {
         hits.push({ line: i + 1, text: literal.slice(0, 90) });
       }
     }

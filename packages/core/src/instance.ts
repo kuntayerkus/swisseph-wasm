@@ -67,6 +67,24 @@ const GAUQUELIN_SECTOR_COUNT = 36;
 const HOUSE_COUNT = 12;
 
 /**
+ * ascmc / ascmc_speed tamponlarının double cinsinden boyutu.
+ *
+ * `ASCMC.Count` (= SE_NASCMC = 8) DİZİNİN BOYUTU DEĞİL, anlamlı alanların
+ * sayısı. C tarafı 10 double yazıyor: `swehouse.c:681` ve `:694` sekizden
+ * ona kadar olan gözleri sıfırlıyor, `:267` ise Sunshine ('I') sistemi için
+ * Güneş'in deklinasyonunu ascmc[9]'a koyuyor.
+ *
+ * ASCMC.Count kadar ayırmak her houses() çağrısında 16 baytlık bir taşma
+ * demekti. ÖLÇÜLDÜ: dlmalloc bu boyutta 72 baytlık chunk veriyor, dolayısıyla
+ * taşan iki double komşu ayırmanın malloc başlığını sıfırlıyor ve ilk
+ * baytlarına yazıyordu — bufAscmc bufAscmcSpeed'i, bufAscmcSpeed de
+ * bufGeo'yu (gözlemcinin boylamı) eziyordu. Dönen açı değerleri doğru
+ * göründüğü için hiçbir şey yanlış görünmüyordu; bozulan yığın metaverisiydi
+ * ve bedeli dispose() içindeki free()'ye erteleniyordu.
+ */
+const ASCMC_BUFFER_SIZE = 10;
+
+/**
  * Bu ev sistemi Gauquelin sektörleri mi?
  *
  * C tarafı `toupper(hsys) == 'G'` ile bakıyor (swehouse.c:225), yani `'g'` de
@@ -261,8 +279,8 @@ export async function createSwissEph(options: SwissEphOptions = {}) {
   const bufName = wasm._malloc(ERROR_BUFFER_SIZE);
   const bufCusps = wasm._malloc(CUSPS_BUFFER_SIZE * 8);
   const bufCuspSpeed = wasm._malloc(CUSPS_BUFFER_SIZE * 8);
-  const bufAscmc = wasm._malloc(ASCMC.Count * 8);
-  const bufAscmcSpeed = wasm._malloc(ASCMC.Count * 8);
+  const bufAscmc = wasm._malloc(ASCMC_BUFFER_SIZE * 8);
+  const bufAscmcSpeed = wasm._malloc(ASCMC_BUFFER_SIZE * 8);
   const bufGeo = wasm._malloc(3 * 8);        // gözlemci: boylam, enlem, yükseklik
   const bufHorIn = wasm._malloc(3 * 8);      // swe_azalt girdisi
   const bufHorOut = wasm._malloc(3 * 8);     // azimut, gerçek yük., görünen yük.

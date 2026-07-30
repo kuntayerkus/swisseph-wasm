@@ -26,7 +26,7 @@ export interface EphemerisSource {
  * bundler import, a user upload, your own cache.
  */
 export class MemoryEphemeris implements EphemerisSource {
-  readonly description = 'bellek';
+  readonly description = 'memory';
   #files: Map<string, Uint8Array>;
 
   constructor(files: Record<string, Uint8Array | ArrayBuffer>) {
@@ -133,7 +133,7 @@ export class NodeFsEphemeris implements EphemerisSource {
 
   constructor(directory: string) {
     this.#directory = directory;
-    this.description = `dosya sistemi(${directory})`;
+    this.description = `filesystem(${directory})`;
   }
 
   async read(fileName: string): Promise<Uint8Array | null> {
