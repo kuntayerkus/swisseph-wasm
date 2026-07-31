@@ -7,6 +7,28 @@ All notable changes to this project are documented here. The format follows
 Note that the vendored Swiss Ephemeris version (`2.10.03`) is independent of
 this package's version; upstream changes are called out explicitly.
 
+## [0.2.2] — 2026-07-31
+
+### Fixed
+
+- **0.2.1's `bin` could not start the server.** Run with no arguments — which
+  is what every MCP client does, and exactly what `install` writes into their
+  configs — it exited 13 with *Detected unsettled top-level await* and
+  produced no output at all. The bin reaches the server through
+  `await import('./index.js')`, and `index.ts` imported one symbol back out of
+  `cli.ts`. With top-level await that cycle cannot resolve: `cli.js` is
+  suspended at its await so its evaluation has not completed, `index.js`
+  cannot begin until it does, and `cli.js` cannot resume until `index.js`
+  finishes. Node drains the event loop and gives up. The shared symbol now
+  lives in `node-version.ts`, which neither imports, so the edge that formed
+  the cycle is gone rather than merely unused.
+
+  It shipped because no test ran the bin the way a client runs it. Every test
+  drove `dist/index.js` directly, or the bin *with a subcommand* — and a
+  subcommand exits before reaching the import. The suite and `check-pack` now
+  both complete a real MCP handshake through the bin with no arguments, and
+  both fail against the 0.2.1 code.
+
 ## [0.2.1] — 2026-07-31
 
 Reaching the MCP server, rather than what it computes once reached. Every

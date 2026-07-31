@@ -23,6 +23,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { MINIMUM_NODE_MAJOR, assertSupportedNode } from './node-version.js';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -32,9 +33,6 @@ export const PACKAGE_NAME = '@kuntay/swisseph-mcp';
 
 /** Server key written into client configs. Also the name reported over MCP. */
 export const SERVER_KEY = 'swisseph';
-
-/** package.json `engines.node`, as a number we can compare against. */
-export const MINIMUM_NODE_MAJOR = 20;
 
 // --- the launch line -----------------------------------------------------
 
@@ -524,26 +522,6 @@ export async function runCli(argv: string[]): Promise<number | null> {
         `swisseph-mcp: unrecognised argument "${first}".\n` +
         'Run `swisseph-mcp --help`, or pass no arguments to start the server.\n');
       return 2;
-  }
-}
-
-/**
- * Refuses to start on a runtime that cannot run this.
- *
- * `engines.node` is advisory — npm prints a warning and runs the thing anyway,
- * and npx does not even warn. What the user then sees is a syntax error or a
- * missing global from deep inside a dependency, which reads as "this server is
- * broken" rather than "this Node is too old". One sentence naming both
- * versions costs nothing and answers the question.
- */
-export function assertSupportedNode(reportedVersion = process.versions.node): void {
-  const major = Number(reportedVersion.split('.')[0]);
-  if (Number.isFinite(major) && major < MINIMUM_NODE_MAJOR) {
-    process.stderr.write(
-      `swisseph-mcp needs Node ${MINIMUM_NODE_MAJOR} or newer; this is Node ` +
-      `${reportedVersion}.\nUpgrade Node, or point your MCP client at a newer ` +
-      'one with an absolute path to its executable.\n');
-    process.exit(1);
   }
 }
 

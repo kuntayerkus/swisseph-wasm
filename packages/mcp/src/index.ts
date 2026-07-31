@@ -36,7 +36,12 @@ import {
   findDeclinationAspects, outOfBounds,
   type SwissEph,
 } from '@kuntay/swisseph';
-import { assertSupportedNode } from './cli.js';
+/*
+ * './cli.js' DEĞİL — cli.ts bu dosyayı dinamik import ile çağıran bin, ve
+ * buradan oraya bir kenar daha koymak iki modülü kilitliyor. Gerekçe ve
+ * ölçüm node-version.ts'in başında.
+ */
+import { assertSupportedNode } from './node-version.js';
 import { ephemerisStatus, withEphemeris } from './session.js';
 import { formatOffset, resolveTime, type TimeInput } from './time.js';
 import {

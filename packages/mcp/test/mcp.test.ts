@@ -969,6 +969,57 @@ describeBuilt('bin', () => {
     expect(res.status).toBe(0);
     expect(JSON.parse(res.stdout)).toEqual({ mcpServers: { swisseph: serverEntry() } });
   }, 60_000);
+
+  /*
+   * ARGÜMANSIZ bin — istemcilerin gerçekten çalıştırdığı yol, ve testlerin
+   * atladığı tek yol.
+   *
+   * 0.2.1 bu satırda düştü: bin, sunucuya `await import('./index.js')` ile
+   * geçiyordu ve index.js geri dönüp cli.js'ten bir sembol alıyordu. Top-level
+   * await ile bu döngü ÇÖZÜLEMEZ — cli.js await'te askıda olduğu için
+   * değerlendirmesi bitmemiş sayılıyor, index.js o bitmeden başlayamıyor,
+   * cli.js de index.js bitmeden devam edemiyor. Node olay döngüsünü boşaltıp
+   * "Detected unsettled top-level await" deyip 13 ile çıkıyor: sunucu yok,
+   * hata yok, stdout'ta hiçbir şey yok.
+   *
+   * Süite yakalayamadı çünkü her test ya index.js'i doğrudan sürüyordu ya da
+   * bin'i BİR ALT KOMUTLA — alt komut import'a ulaşmadan çıkıyor. Bu test tam
+   * olarak o boşluğu kapatıyor ve `install`ın istemcilere yazdığı komutun ta
+   * kendisini sürüyor.
+   */
+  it('argümansız çalıştırıldığında sunucu olarak açılıyor', async () => {
+    const binClient = new Client({ name: 'bin-test', version: '0.0.0' });
+    await binClient.connect(new StdioClientTransport({
+      command: process.execPath,
+      args: [BIN],
+    }));
+    try {
+      const { tools } = await binClient.listTools();
+      expect(tools.map((t) => t.name)).toContain('natal_chart');
+    } finally {
+      await binClient.close();
+    }
+  }, 60_000);
+
+  it('argümansız çalıştırıldığında stdout yalnızca protokol taşıyor', () => {
+    const res = spawnSync(process.execPath, [BIN], {
+      input: `${JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05', capabilities: {},
+          clientInfo: { name: 'bin-purity', version: '1.0' },
+        },
+      })}\n`,
+      encoding: 'utf8',
+      timeout: 60_000,
+    });
+    expect(res.status).toBe(0);
+    const lines = res.stdout.split('\n').filter((l) => l.trim() !== '');
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) {
+      expect(() => JSON.parse(line) as unknown, line.slice(0, 80)).not.toThrow();
+    }
+  }, 60_000);
 });
 
 /*

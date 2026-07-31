@@ -351,6 +351,23 @@ swe.dispose();
       r.check('--version sunucuyu başlatmadan çıkıyor',
         probe.status === 0 && (probe.stdout ?? '').trim() === expected,
         `çıkış ${probe.status}, stdout ${JSON.stringify((probe.stdout ?? '').trim())}`);
+
+      /*
+       * BİN, ARGÜMANSIZ — istemcilerin gerçekten çalıştırdığı komut.
+       *
+       * Buraya kadar her şey `dist/index.js` üzerinden ölçülüyordu; bin ise
+       * yalnızca bir alt komutla, ve alt komut sunucuya hiç ulaşmadan çıkıyor.
+       * O boşluktan 0.2.1 geçti: bin, index.js'i dinamik import ediyor ve
+       * index.js geri dönüp cli.js'ten sembol alıyordu — top-level await ile
+       * çözülemez bir döngü. Sonuç 13 ile çıkan, tek satır JSON üretmeyen bir
+       * süreçti, ve `install` tam olarak o komutu her istemciye yazıyordu.
+       */
+      const { version: binReported, strayLines: binStray } = initializeHandshake(binPath);
+      r.check('bin argümansız sunucu olarak açılıyor', binReported === expected,
+        binReported ? `serverInfo.version ${binReported}` : 'bin yanıt vermedi');
+      r.check('bin stdout\'u yalnızca JSON-RPC taşıyor', binStray.length === 0,
+        binStray.length === 0 ? 'protokol dışı satır yok'
+          : `${binStray.length} protokol dışı satır: ${binStray[0].slice(0, 60)}`);
     }
   }
 } finally {
