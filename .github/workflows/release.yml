@@ -135,7 +135,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write        # npm provenance için OIDC
+      id-token: write        # OIDC: hem kimlik doğrulama hem provenance
     # Onay kapısı. Bu ad, repo ayarlarındaki environment adıyla HARFİ HARFİNE
     # aynı olmalı. Eşleşmezse GitHub sessizce o adda korumasız yeni bir
     # environment yaratır ve yayın onaysız gider — kapı kurulmuş görünür ama
@@ -157,13 +157,37 @@ jobs:
 
       - run: npm ci --ignore-scripts
 
+      # Trusted publishing npm >= 11.5.1 istiyor. Node 24 yeterince yeni bir
+      # npm ile geliyor ama bu bir varsayım; sürümü basıyoruz ki OIDC bir gün
+      # tuhaf bir hatayla düşerse ilk bakılacak yer logda hazır olsun.
+      - name: Toolchain
+        run: |
+          node --version
+          npm --version
+
+      # YAYIN TRUSTED PUBLISHING (OIDC) İLE — token yok.
+      #
+      # npm, id-token izniyle üretilen kısa ömürlü OIDC token'ını registry'ye
+      # takas ediyor; kimlik, koşan iş akışının kendisi. Uzun ömürlü sır
+      # saklanmıyor, dolayısıyla sızacak bir şey de yok.
+      #
+      # NODE_AUTH_TOKEN KALDIRILDI. Ortamda dururken npm onu tercih edip OIDC
+      # yolunu hiç denemeyebilirdi — geçişin gerçekten olduğunu ancak token
+      # yokken kanıtlayabiliriz.
+      #
+      # `--provenance` de kaldırıldı: OIDC ile yayınlarken provenance zaten
+      # otomatik üretiliyor. `--access public` gereksiz, dört paketin de
+      # package.json'ında publishConfig.access = public yazıyor.
+      #
       # Sıra önemli: core önce, veri paketleri ona atıf yapıyor. MCP sunucusu
       # core'a tam sürümle bağlı olduğu için en sonda.
+      #
+      # Her paketin npmjs.com'da AYRI bir trusted publisher kaydı olmalı:
+      # kuntayerkus / swisseph-wasm / release.yml / environment npm_publish.
+      # Biri eksikse yayın o pakette durur — sıradaki hiç denenmez.
       - name: Publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm publish --workspace ./packages/core --provenance --access public
-          npm publish --workspace ./packages/data --provenance --access public
-          npm publish --workspace ./packages/asteroids --provenance --access public
-          npm publish --workspace ./packages/mcp --provenance --access public
+          npm publish --workspace ./packages/core
+          npm publish --workspace ./packages/data
+          npm publish --workspace ./packages/asteroids
+          npm publish --workspace ./packages/mcp
