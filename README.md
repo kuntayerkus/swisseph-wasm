@@ -513,6 +513,36 @@ formula — implementations that treat it as a sect mirror put it in the wrong
 place. Definitions may supply a `compute` function for cases like this, and
 custom tables are first-class if you follow a different tradition.
 
+### Houses: placement, and the angles the cusps do not give you
+
+Which house a body falls in is not `floor((longitude − ascendant) / 30) + 1`.
+That is right only for equal houses; a Placidus house can be 60° wide next to a
+12° one, and the arithmetic has to cross 0° Aries without noticing:
+
+```ts
+import { houseOf, assignHouses } from '@kuntay/swisseph';
+
+const { cusps, descendant, imumCoeli } = swe.houses(jd, 39.93, 32.86, 'P');
+houseOf(swe.calc(jd, Body.Sun).longitude, cusps);   // 7
+```
+
+`descendant` and `imumCoeli` are computed rather than read off the seventh and
+fourth cusps, because that identity holds only in quadrant systems. Under whole
+sign the fourth cusp and the real IC can be a whole sign apart:
+
+```ts
+const w = swe.houses(jd, 39.93, 32.86, 'W');
+w.cusps[3];     //  0°00' Capricorn — the fourth house begins here
+w.imumCoeli;    //  1°11' Aquarius  — the lower meridian is here
+```
+
+Equal, Morinus, Vehlow and the meridian systems all behave the same way. So
+does the Midheaven: in that chart it sits in the eleventh whole-sign house, not
+the tenth.
+
+`houseOf()` refuses Gauquelin sectors instead of returning a number for them —
+there are 36 and they run clockwise, so no house number applies.
+
 ### House systems near the poles
 
 Placidus, Koch, Gauquelin and Sunshine are mathematically undefined beyond the
@@ -580,9 +610,28 @@ aspects[0].applying;   // applying or separating
 `findAspectsBetween()` handles synastry and transits — it compares across the
 two sets only, never within them.
 
-Applying and separating are found by nudging both points forward by their
-speeds and seeing whether the orb shrinks. Retrograde motion and the 0/360
-boundary fall out of that without special cases.
+Applying and separating come from the derivative of the orb, not from stepping
+the positions forward and re-measuring. A finite step overshoots: the Moon
+covers 0.13° in a hundredth of a day, so a sampled reading calls a Moon aspect
+inside about 0.06° of exact "separating" while it is still applying — precisely
+the partile range that matters. Retrograde motion and the 0/360 boundary fall
+out of the signed difference without special cases.
+
+Points may declare a `group`, and `findAspects()` never pairs two points that
+share one:
+
+```ts
+findAspects([
+  { name: 'Ascendant', longitude: 0, group: 'angles' },
+  { name: 'Midheaven', longitude: 89.98, group: 'angles' },
+]);   // []
+```
+
+The Ascendant–Midheaven separation is a function of latitude and obliquity and
+nothing else — at 20° it is 89.98°, so without this every chart at that latitude
+reports a square with a one-arcminute orb, sorted to the top of the list. The
+two lunar nodes are the same case. `findAspectsBetween()` ignores the group,
+because one chart's angles against another's *are* a real contact.
 
 ### Antiscia
 

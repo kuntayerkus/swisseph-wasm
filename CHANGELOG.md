@@ -7,6 +7,98 @@ All notable changes to this project are documented here. The format follows
 Note that the vendored Swiss Ephemeris version (`2.10.03`) is independent of
 this package's version; upstream changes are called out explicitly.
 
+## [Unreleased]
+
+An audit of the house, angle, aspect and lot code. The Arabic lot formulae and
+the house cusps themselves came through clean — cusps were re-verified against
+the defining Placidus semi-arc relation and agree to 0.00″ — but the layers
+around them did not.
+
+### Fixed
+
+- **`houses()` wrote past the end of its `ascmc` buffer on every call.** The
+  buffer was sized from `ASCMC.Count` (`SE_NASCMC` = 8), which is the number of
+  *meaningful* entries, not the array length: the C side writes ten doubles
+  (`swehouse.c:681`, `:694`, and `:267` for the Sunshine system). The overflow
+  was measured, not inferred — the two doubles past the end landed on the
+  malloc header of the next allocation and on its first bytes, zeroing the
+  observer's longitude and corrupting heap metadata that `dispose()` later
+  handed to `free()`. The returned angles were always correct, which is why
+  nothing looked wrong. `packages/core/test/wasm-buffers.test.ts` now measures
+  the write footprint so an upstream change cannot reintroduce it.
+- **Applying/separating was inverted for partile aspects.** The direction was
+  read by stepping both points forward 0.01 days and comparing orbs; the Moon
+  covers 0.13° in that time, so any Moon aspect within about 0.06° of exact
+  stepped *past* perfection and was reported as separating while it was still
+  applying. The threshold scaled with relative speed, so it hit the fastest —
+  and in horary the most consequential — pairs hardest. Now taken from the
+  derivative of the orb, which has no step to overshoot. The same defect was
+  present in `findDeclinationAspects()` and is fixed there too.
+- **`lots()` ignored `calcOptions` when computing the angles.** Called with
+  `Flag.Sidereal`, the planets came back sidereal and the Ascendant and
+  Midheaven tropical, shifting every lot by an ayanamsa (~24°) with no warning.
+  Fortune and Spirit still looked right, because the ayanamsa cancels in a
+  Moon−Sun difference, which hid the rest.
+- **Ascendant–Midheaven was reported as an aspect.** Their separation is a
+  function of latitude and obliquity, nothing else; at 20° it is 89.98°, so
+  every chart there carried an "Ascendant square Midheaven" with a 0°01′ orb at
+  the top of the list. The same applied to the two lunar nodes once the south
+  node was added. Points can now declare an `AspectPoint.group`, and
+  `findAspects()` skips pairs that share one. `findAspectsBetween()` ignores
+  the group, since one chart's angles against another's are a real contact.
+- **`houseOf()` boundary precision.** A body sitting exactly on a cusp fell
+  into the *previous* house, because `normalizeDegrees()` adds and subtracts
+  360 and perturbs the last bits. Both sides of the comparison now go through
+  the same transform. (Found while writing the tests for the new function.)
+- When two aspect definitions both fit a pair under a wide orb scheme, the
+  **strongest** is now kept rather than the one with the tightest raw orb —
+  matching the metric the result list is sorted by.
+- `LORD_BODY.NorthNode` used the mean node while the rest of the library used
+  the true node, so "the north node" had two different positions in one
+  session. Both are the true node now.
+- The MCP server printed 12 of the 36 Gauquelin sectors and labelled them
+  "House 1–12". All are printed, labelled as sectors, with a note that sector
+  *n* is not house *n*.
+- Longitude columns in the MCP output were one character too narrow, so every
+  Sagittarius row ran into the next column.
+- Two ephemeris source descriptions were Turkish and are now English:
+  `MemoryEphemeris.description` was `bellek` and is `memory`;
+  `NodeFsEphemeris.description` was `dosya sistemi(…)` and is `filesystem(…)`,
+  matching the `fetch(…)` alongside them. These strings leave at runtime rather
+  than staying in the source — the MCP server hands them to a model — and the
+  check that exists to keep Turkish off the public surface recognised it only
+  by the characters `çğıİöşü`, so Turkish written in plain ASCII passed. The
+  check now carries a word list as well.
+
+### Added
+
+- `houseOf()` and `assignHouses()` — which house a longitude falls in. This
+  existed nowhere, and the obvious `floor((longitude − ascendant) / 30) + 1` is
+  right only for equal houses; a Placidus house can be 60° wide next to a 12°
+  one. Rejects Gauquelin sectors rather than returning a meaningless number.
+- `Houses.descendant` and `Houses.imumCoeli`. Swiss Ephemeris returns neither,
+  on the assumption that the seventh and fourth cusps will do — which holds
+  only in quadrant systems. In whole sign the fourth cusp can be 31° from the
+  real IC, and there was no way to obtain it at all. Correct under
+  `Flag.Radians` as well.
+- The south node in the MCP chart. Swiss Ephemeris has no body constant for it
+  because it is not a body, so it was simply absent; it is now derived from the
+  true node, with the declination sign flipped exactly.
+- House numbers alongside every planet and every lot in the MCP chart output.
+
+### Removed
+
+- `FindAspectsOptions.includeSelfPairs`, which was declared and documented but
+  never read — passing `false` returned exactly the same aspects as `true`.
+  What it described is `findAspectsBetween()`, a separate function; what
+  replaces it for the real use case is `AspectPoint.group`.
+
+### Changed
+
+- Releases publish through npm trusted publishing (OIDC) instead of a stored
+  token. Provenance attestations continue to be generated, now without a
+  long-lived credential in the release workflow.
+
 ## [0.1.0] — 2026-07-31
 
 First release. Everything below is the work leading up to it.

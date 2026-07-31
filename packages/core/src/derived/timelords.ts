@@ -194,6 +194,16 @@ export type FirdariaLord =
   | 'Sun' | 'Moon' | 'Mercury' | 'Venus' | 'Mars' | 'Jupiter' | 'Saturn'
   | 'NorthNode' | 'SouthNode';
 
+/*
+ * Kuzey düğüm için GERÇEK (true) düğüm — kütüphanenin geri kalanıyla aynı.
+ *
+ * Burası NorthNodeMean idi, oysa swe.lots() ve MCP haritası NorthNodeTrue
+ * kullanıyor. Aynı oturumda "kuzey ay düğümü"nün iki farklı konumu çıkıyordu
+ * (bu tarihte 1.08° fark) ve hangisinin nereden geldiğini söyleyen bir şey
+ * yoktu. Firdaria'da düğümün KONUMU zaten kullanılmıyor — LORD_BODY sadece
+ * "bu efendinin yerine bakmak istersen" diye var — dolayısıyla tutarlılık
+ * bedelsiz. Ortalama düğümü isteyen Body.NorthNodeMean ile kendisi bakar.
+ */
 export const LORD_BODY: Record<FirdariaLord, number | null> = {
   Sun: Body.Sun,
   Moon: Body.Moon,
@@ -202,7 +212,7 @@ export const LORD_BODY: Record<FirdariaLord, number | null> = {
   Mars: Body.Mars,
   Jupiter: Body.Jupiter,
   Saturn: Body.Saturn,
-  NorthNode: Body.NorthNodeMean,
+  NorthNode: Body.NorthNodeTrue,
   SouthNode: null,
 };
 

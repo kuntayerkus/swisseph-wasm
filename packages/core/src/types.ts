@@ -108,6 +108,22 @@ export interface Houses {
   substituted: boolean;
   ascendant: number;
   midheaven: number;
+  /**
+   * The Descendant — the Ascendant's opposition.
+   *
+   * Derived here rather than read from a cusp on purpose. In a quadrant
+   * system it equals `cusps[6]`, but in whole sign, equal, Morinus, Vehlow
+   * and the meridian systems it does **not**: the seventh cusp is a house
+   * boundary, and the Descendant is where the ecliptic meets the western
+   * horizon. Reading one for the other is wrong by up to a whole sign.
+   */
+  descendant: number;
+  /**
+   * The Imum Coeli — the Midheaven's opposition, the lower meridian.
+   * Equal to `cusps[3]` in a quadrant system and not otherwise; see
+   * {@link descendant}.
+   */
+  imumCoeli: number;
   /** Right ascension of the meridian. */
   armc: number;
   vertex: number;

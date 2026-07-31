@@ -433,6 +433,34 @@ describeBuilt('MCP protokolü', () => {
     expect(orbs.some((v, i) => i > 0 && v < orbs[i - 1])).toBe(true);
   }, 60_000);
 
+  /**
+   * Birbirine BAĞIMLI çiftler açı listesine girmemeli.
+   *
+   * Yükselen–MC ayrımı yalnızca enlemin ve eğikliğin fonksiyonu; kuzey ve
+   * güney düğüm ise tanımı gereği tam 180° ayrı. İkisi de her haritada
+   * garantili "açı" üretiyor ve orb'ları küçük olduğu için listenin başına
+   * oturuyorlar — model de haritanın en güçlü teması diye onları okuyor.
+   */
+  it('Yükselen–MC ve düğüm–düğüm çiftleri açı olarak raporlanmıyor', async () => {
+    const out = await call('natal_chart', NATAL);
+    const block = out.slice(out.indexOf('ASPECTS'));
+    expect(block).not.toMatch(/Ascendant\s+\w+\s+Midheaven/);
+    expect(block).not.toMatch(/Midheaven\s+\w+\s+Ascendant/);
+    expect(block).not.toMatch(/true Node\s+Opposition\s+South Node/);
+    // Ama gezegen–açı ve gezegen–düğüm temasları durmalı.
+    expect(block).toMatch(/(Ascendant|Midheaven)/);
+  }, 60_000);
+
+  it('dört açı noktası ve iki düğüm de çıktıda var', async () => {
+    const out = await call('natal_chart', NATAL);
+    for (const label of ['Ascendant', 'Descendant', 'Midheaven', 'Imum Coeli']) {
+      expect(out, label).toContain(label);
+    }
+    expect(out).toContain('South Node');
+    // Her gezegen satırında ev numarası.
+    expect(out.slice(out.indexOf('POSITIONS'))).toMatch(/h\s+\d+\s+\(/);
+  }, 60_000);
+
   it('orb şeması sonucu değiştiriyor', async () => {
     const tight = await call('natal_chart', { ...NATAL, orb_scheme: 'tight' });
     const modern = await call('natal_chart', { ...NATAL, orb_scheme: 'modern' });

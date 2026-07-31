@@ -11,7 +11,7 @@
 
 import {
   Body, HOUSE_SYSTEM_ALIASES, HOUSE_SYSTEM_NAMES, HouseSystem,
-  evaluateDignities, findAspects,
+  evaluateDignities, findAspects, houseOf, normalizeDegrees,
   MODERN_ORBS, TIGHT_ORBS, TRADITIONAL_MOIETIES,
   type AspectPoint, type OrbScheme, type SwissEph,
 } from '@kuntay/swisseph';
@@ -44,14 +44,31 @@ export interface ChartPlace {
 
 export interface BodyPosition {
   name: string;
-  body: number;
+  /**
+   * The Swiss Ephemeris body constant. **Absent for derived points**: the
+   * south node has no constant because it is not an object, it is the point
+   * opposite the north node.
+   */
+  body?: number;
   longitude: number;
   speed: number;
   retrograde: boolean;
   declination: number;
+  /**
+   * Points that are not independent of one another, passed straight through
+   * to {@link AspectPoint.group} so they are never aspected together. The
+   * two lunar nodes are the case: they are 180° apart by construction, so
+   * "north node opposition south node, orb 0°00'" is guaranteed in every
+   * chart and sorts to the top of every aspect list.
+   */
+  group?: string;
   /** Set when the body needed a data file that is not present. */
   unavailable?: string;
 }
+
+/** Yükselen–MC ve Kuzey–Güney düğüm: eşleştirilmemesi gereken çiftler. */
+const ANGLE_GROUP = 'angles';
+const NODE_GROUP = 'nodes';
 
 export interface Chart {
   jd: number;
@@ -91,7 +108,30 @@ export function computeChart(
         speed: position.longitudeSpeed,
         retrograde: position.longitudeSpeed < 0,
         declination: equatorial.declination,
+        ...(body === Body.NorthNodeTrue ? { group: NODE_GROUP } : {}),
       });
+
+      /*
+       * Güney Ay Düğümü.
+       *
+       * Swiss Ephemeris'te cisim sabiti YOK, çünkü bir cisim değil: kuzey
+       * düğümün tam karşısındaki nokta. Bu yüzden CHART_BODIES'e yazılamıyor
+       * ve şimdiye kadar haritada hiç görünmüyordu — oysa Ketu/Güney Düğüm
+       * her yorumda kuzeyiyle birlikte okunan bir nokta.
+       *
+       * İkisi de ekliptik üzerinde (enlem 0) olduğu için deklinasyon tam
+       * olarak işaret değiştiriyor, yaklaşık değil. Boylamdaki hız aynı.
+       */
+      if (body === Body.NorthNodeTrue) {
+        positions.push({
+          name: 'South Node',
+          longitude: normalizeDegrees(position.longitude + 180),
+          speed: position.longitudeSpeed,
+          retrograde: position.longitudeSpeed < 0,
+          declination: -equatorial.declination,
+          group: NODE_GROUP,
+        });
+      }
     } catch (error) {
       positions.push({
         name: swe.planetName(body),
@@ -122,23 +162,56 @@ export function computeChart(
 export function aspectPoints(chart: Chart, includeAngles = true): AspectPoint[] {
   const points: AspectPoint[] = chart.positions
     .filter((p) => !p.unavailable)
-    .map((p) => ({ name: p.name, longitude: p.longitude, body: p.body, speed: p.speed }));
+    .map((p) => ({
+      name: p.name, longitude: p.longitude, body: p.body, speed: p.speed,
+      ...(p.group ? { group: p.group } : {}),
+    }));
 
   if (includeAngles) {
     // Açılara hız vermiyoruz: Yükselen ve MC günde bir tur atıyor ve o hızla
     // "uygulanan" hesaplamak anlamsız olurdu. Hız yoksa applying tanımsız
     // kalıyor, ki doğrusu bu.
-    points.push({ name: 'Ascendant', longitude: chart.houses.ascendant });
-    points.push({ name: 'Midheaven', longitude: chart.houses.midheaven });
+    //
+    // group: ikisi birbiriyle EŞLEŞTİRİLMESİN diye. Yükselen–MC ayrımı bir
+    // açı değil, enlemin fonksiyonu; 20° enlemde 89.98° çıkıyor ve haritanın
+    // en sıkı "karesi" olarak listenin başına oturuyordu. Ayrıntı için
+    // AspectPoint.group.
+    points.push({ name: 'Ascendant', longitude: chart.houses.ascendant, group: ANGLE_GROUP });
+    points.push({ name: 'Midheaven', longitude: chart.houses.midheaven, group: ANGLE_GROUP });
   }
   return points;
 }
+
+/**
+ * Ev numarası veren yardımcı.
+ *
+ * Gauquelin sektörlerinde ev kavramı yok (36 tane ve ters yönde), orada
+ * `null` dönüyoruz — houseOf() haklı olarak hata verirdi ve bütün haritayı
+ * düşürmesi doğru olmazdı.
+ */
+function houseFinder(chart: Chart): (longitude: number) => number | null {
+  if (chart.houses.cusps.length !== 12) return () => null;
+  return (longitude) => houseOf(longitude, chart.houses.cusps);
+}
+
+/** `h 7` biçiminde sabit genişlikte ev sütunu. */
+const houseColumn = (house: number | null): string =>
+  house === null ? '     ' : `h${String(house).padStart(3)} `;
 
 // --- rendering -----------------------------------------------------------
 
 const NAME_WIDTH = 12;
 
+/**
+ * `formatLongitude` çıktısının en genişi: 9 karakter derece + boşluk +
+ * "Sagittarius" (11) = 21. Buradaki 20, Yay burcundaki her satırın bir
+ * sonraki sütuna yapışmasına yol açıyordu ("Sagittariush  2"). Hizalama
+ * kozmetik değil — modelin sütunları ayırt edebilmesi buna bağlı.
+ */
+const LONGITUDE_WIDTH = 22;
+
 export function renderPositions(chart: Chart): string {
+  const houseOfPoint = houseFinder(chart);
   const lines = ['POSITIONS'];
   for (const p of chart.positions) {
     if (p.unavailable) {
@@ -147,7 +220,9 @@ export function renderPositions(chart: Chart): string {
     }
     const retrograde = p.retrograde ? 'R' : ' ';
     lines.push(
-      `${pad(p.name, NAME_WIDTH)}${retrograde} ${pad(formatLongitude(p.longitude), 20)}` +
+      `${pad(p.name, NAME_WIDTH)}${retrograde} ` +
+      `${pad(formatLongitude(p.longitude), LONGITUDE_WIDTH)}` +
+      `${houseColumn(houseOfPoint(p.longitude))}` +
       ` (${p.longitude.toFixed(4)}°)  ${p.speed >= 0 ? '+' : ''}${p.speed.toFixed(4)}°/day` +
       `  dec ${formatDeclination(p.declination)}`,
     );
@@ -170,11 +245,36 @@ export function renderHouses(chart: Chart): string {
       `Ephemeris substituted another one. ${houses.warning ?? ''}`.trim());
   }
 
+  /*
+   * Dört açı da BASILIYOR — eskiden yalnızca Yükselen ve Tepe Noktası vardı.
+   *
+   * "Alçalan 7. ev ucundan, Dip Noktası 4.'den okunur" yalnızca dörtlü
+   * sistemlerde doğru. Whole sign'da bu haritada 4. ev ucu 0° Oğlak, gerçek
+   * IC ise 1° Kova: 31° fark, ve çıktıda gerçek IC'ye ulaşmanın hiçbir yolu
+   * yoktu. Equal, Morinus, Vehlow ve meridyen sistemlerinde de aynı.
+   */
   lines.push(`${pad('Ascendant', NAME_WIDTH)} ${formatLongitude(houses.ascendant)}`);
+  lines.push(`${pad('Descendant', NAME_WIDTH)} ${formatLongitude(houses.descendant)}`);
   lines.push(`${pad('Midheaven', NAME_WIDTH)} ${formatLongitude(houses.midheaven)}`);
+  lines.push(`${pad('Imum Coeli', NAME_WIDTH)} ${formatLongitude(houses.imumCoeli)}`);
   lines.push(`${pad('Vertex', NAME_WIDTH)} ${formatLongitude(houses.vertex)}`);
-  for (let i = 0; i < 12; i++) {
-    lines.push(`${pad(`House ${i + 1}`, NAME_WIDTH)} ${formatLongitude(houses.cusps[i])}`);
+
+  /*
+   * Gauquelin 36 SEKTÖR döndürüyor, 12 ev değil.
+   *
+   * Buradaki döngü 12'de sabitti: 24 sektör sessizce düşüyor ve kalan 12'si
+   * "House n" diye etiketleniyordu. İkisi de yanlıştı — sektörler saat
+   * yönünde sayılıyor, yani 4. sektörün 4. evle ilgisi yok.
+   */
+  const gauquelin = houses.cusps.length !== 12;
+  if (gauquelin) {
+    lines.push(
+      `These are Gauquelin SECTORS, not houses: ${houses.cusps.length} of them, ` +
+      'counted clockwise. Sector n is not house n.');
+  }
+  for (let i = 0; i < houses.cusps.length; i++) {
+    const label = gauquelin ? `Sector ${i + 1}` : `House ${i + 1}`;
+    lines.push(`${pad(label, NAME_WIDTH)} ${formatLongitude(houses.cusps[i])}`);
   }
   return lines.join('\n');
 }
@@ -225,7 +325,8 @@ export function renderAspects(
 export function renderDignities(swe: SwissEph, chart: Chart): string {
   const lines = ['DIGNITIES (essential)'];
   for (const position of chart.positions) {
-    if (position.unavailable || !DIGNITY_BODIES.includes(position.body)) continue;
+    if (position.unavailable || position.body === undefined) continue;
+    if (!DIGNITY_BODIES.includes(position.body)) continue;
 
     const report = evaluateDignities(position.body, position.longitude, chart.sect.sect);
     const held = report.dignities.length
@@ -240,10 +341,13 @@ export function renderDignities(swe: SwissEph, chart: Chart): string {
 }
 
 export function renderLots(chart: Chart): string {
+  const houseOfPoint = houseFinder(chart);
   const lines = ['ARABIC LOTS'];
   for (const [name, lot] of Object.entries(chart.lots)) {
     const note = lot.sectDependent ? ` (${lot.sectUsed} formula)` : '';
-    lines.push(`${pad(name, NAME_WIDTH)} ${formatLongitude(lot.longitude)}${note}`);
+    lines.push((
+      `${pad(name, NAME_WIDTH)} ${pad(formatLongitude(lot.longitude), LONGITUDE_WIDTH)}` +
+      `${houseColumn(houseOfPoint(lot.longitude))}${note}`).trimEnd());
   }
   return lines.join('\n');
 }

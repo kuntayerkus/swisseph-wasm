@@ -391,9 +391,28 @@ aspects[0].applying;   // uygulanan mı, ayrılan mı
 Sinastri ve transitler için `findAspectsBetween()`: yalnızca kümeler arası
 çiftleri karşılaştırıyor, küme içindekileri değil.
 
-Uygulanan/ayrılan ayrımı, iki noktayı hızlarıyla ileri itip orbun küçülüp
-küçülmediğine bakarak bulunuyor. Retrograd hareket ve 0/360 sınırı bu sayede
-özel durum gerektirmiyor.
+Uygulanan/ayrılan ayrımı, konumları ileri itip yeniden ölçerek değil, orbun
+TÜREVİNDEN bulunuyor. Sonlu bir adım tam açının üstünden atlıyor: Ay günün
+yüzde birinde 0.13° gidiyor, dolayısıyla örnekleyerek okuyan bir hesap tam
+açıya 0.06°'den yakın bir Ay temasını hâlâ yaklaşırken "ayrılan" diyor — üstelik
+tam da önemli olan partil aralıkta. Retrograd hareket ve 0/360 sınırı işaretli
+farkın içinde olduğu için özel durum gerektirmiyor.
+
+Noktalar bir `group` bildirebiliyor; `findAspects()` aynı gruptaki iki noktayı
+asla eşleştirmiyor:
+
+```ts
+findAspects([
+  { name: 'Ascendant', longitude: 0, group: 'angles' },
+  { name: 'Midheaven', longitude: 89.98, group: 'angles' },
+]);   // []
+```
+
+Yükselen–Tepe Noktası ayrımı yalnızca enlemin ve eğikliğin fonksiyonu: 20°
+enlemde 89.98° çıkıyor, yani bu olmadan o enlemdeki her harita bir yay-dakikası
+orb'lu bir kare raporluyor ve o kare listenin başına oturuyor. İki ay düğümü de
+aynı durumda. `findAspectsBetween()` grubu yok sayıyor, çünkü bir haritanın
+açıları başka bir haritanınkilerle *gerçekten* temas kuruyor.
 
 ### Antiscia
 
@@ -505,6 +524,35 @@ lords?.major.lord;   // 'Sun'   lords?.minor?.lord;   // alt dönem
 Yıl uzunluğu açık bir seçenek (tropik, Jülyen ya da Mısır yılı). 75 yıllık bir
 firdaria devrinde tropik ile Mısır yılı 18 gün ayrışıyor ve bu bir alt dönem
 sınırını kaydırmaya yeter.
+
+### Evler: yerleşim ve cusp'ların vermediği açı noktaları
+
+Bir cismin hangi evde olduğu `floor((boylam − yükselen) / 30) + 1` değil. O
+formül yalnızca eşit evlerde doğru; Placidus'ta 12°'lik bir evin yanında 60°'lik
+bir ev olabiliyor ve hesabın 0° Koç'u fark etmeden geçmesi gerekiyor:
+
+```ts
+import { houseOf, assignHouses } from '@kuntay/swisseph';
+
+const { cusps, descendant, imumCoeli } = swe.houses(jd, 39.93, 32.86, 'P');
+houseOf(swe.calc(jd, Body.Sun).longitude, cusps);   // 7
+```
+
+`descendant` ve `imumCoeli` 7. ve 4. ev ucundan okunmuyor, hesaplanıyor —
+çünkü o eşitlik yalnızca dörtlü sistemlerde geçerli. Whole sign'da 4. ev ucu ile
+gerçek Dip Noktası bir burç ayrı düşebiliyor:
+
+```ts
+const w = swe.houses(jd, 39.93, 32.86, 'W');
+w.cusps[3];     //  0°00' Oğlak — dördüncü ev burada başlıyor
+w.imumCoeli;    //  1°11' Kova  — alt meridyen burada
+```
+
+Equal, Morinus, Vehlow ve meridyen sistemleri de aynı şekilde davranıyor. Tepe
+Noktası da öyle: o haritada 10. değil, 11. whole sign evinde duruyor.
+
+`houseOf()` Gauquelin sektörlerini reddediyor — 36 tane ve saat yönünde
+sayılıyorlar, dolayısıyla hiçbir ev numarası anlamlı değil.
 
 ### Kutuplara yakın ev sistemleri
 

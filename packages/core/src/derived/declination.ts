@@ -127,10 +127,19 @@ export function findDeclinationAspects(
 /**
  * Whether the tie is closing.
  *
- * Both points are nudged forward by their declination speeds and the orb is
- * remeasured, the same trick the longitude aspect engine uses. It costs one
- * extra subtraction and handles a body reversing across its solstice point
- * without a special case.
+ * The orb is `|δ₁ − δ₂|` for a parallel and `|δ₁ + δ₂|` for a contraparallel,
+ * so the tie is applying exactly when that derivative is negative:
+ *
+ *   d(orb)/dt = sign(gap) · (speed₁ ∓ speed₂)
+ *
+ * This used a finite step of 0.01 days, the same one the longitude engine
+ * used, and it carried the same defect: when the step was wider than twice
+ * the orb it stepped **past** exactness and called a closing tie separating.
+ * Declination speeds are small, so the window was narrow — but it sat right
+ * at exactness, which is the only place a parallel is interesting.
+ *
+ * A body reversing across its solstice point still needs no special case: the
+ * reversal is already in the sign of its declination speed.
  */
 function applyingState(
   from: DeclinationPoint,
@@ -139,16 +148,13 @@ function applyingState(
 ): { applying?: boolean } {
   if (from.speed === undefined || to.speed === undefined) return {};
 
-  const step = 0.01;   // days
-  const a = from.declination + from.speed * step;
-  const b = to.declination + to.speed * step;
+  const parallel = kind === 'parallel';
+  const gap = parallel
+    ? from.declination - to.declination
+    : from.declination + to.declination;
+  const gapRate = parallel ? from.speed - to.speed : from.speed + to.speed;
 
-  const now = kind === 'parallel'
-    ? Math.abs(from.declination - to.declination)
-    : Math.abs(from.declination + to.declination);
-  const later = kind === 'parallel' ? Math.abs(a - b) : Math.abs(a + b);
-
-  return { applying: later < now };
+  return { applying: Math.sign(gap) * gapRate < 0 };
 }
 
 export interface OutOfBoundsReport {

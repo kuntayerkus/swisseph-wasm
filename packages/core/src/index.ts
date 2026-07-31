@@ -88,6 +88,12 @@ export {
 } from './derived/sect.js';
 
 export {
+  assignHouses,
+  houseOf,
+  type HousePlacement,
+} from './derived/houses.js';
+
+export {
   ALL_LOTS,
   calculateLots,
   /** @deprecated Use `NON_HERMETIC_LOTS`. */

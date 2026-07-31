@@ -117,6 +117,23 @@ export interface AspectPoint {
   body?: number;
   /** Degrees per day; enables applying/separating detection. */
   speed?: number;
+  /**
+   * Points that are **not independent of one another**.
+   *
+   * {@link findAspects} never pairs two points carrying the same group, and
+   * the reason is that the angle between them is not an aspect at all.
+   * The Ascendant and the Midheaven are the case that forces this: their
+   * separation is a function of latitude and obliquity, nothing else. At 20°
+   * it happens to be 89.98°, so a chart there reports an Ascendant–Midheaven
+   * square with a 0°01' orb — the tightest contact in the chart, sorted to
+   * the top, and carrying no information whatsoever. Every chart at that
+   * latitude gets it.
+   *
+   * Only {@link findAspects} honours this. {@link findAspectsBetween} compares
+   * two separate sets, where one chart's angles against another's are a real
+   * contact, so it deliberately ignores the group.
+   */
+  group?: string;
 }
 
 export interface Aspect {
@@ -141,10 +158,20 @@ export interface Aspect {
   applying?: boolean;
 }
 
+/**
+ * Signed angular difference `b − a`, reduced to (−180, 180].
+ *
+ * The sign says which way round the pair sits, which is what tells an
+ * applying aspect from a separating one.
+ */
+function signedSeparation(a: number, b: number): number {
+  const d = normalizeDegrees(b - a);
+  return d > 180 ? d - 360 : d;
+}
+
 /** Shortest angular distance between two longitudes, 0–180. */
 export function separation(a: number, b: number): number {
-  const d = Math.abs(normalizeDegrees(a) - normalizeDegrees(b));
-  return d > 180 ? 360 - d : d;
+  return Math.abs(signedSeparation(a, b));
 }
 
 function orbFor(
@@ -175,17 +202,25 @@ export interface FindAspectsOptions {
   aspects?: Record<string, AspectDefinition>;
   /** Orb scheme. Defaults to {@link MODERN_ORBS}. */
   orbs?: OrbScheme;
-  /**
-   * Compare every point against every other. When false (the default is
-   * true), only cross-set comparisons are made — see {@link findAspectsBetween}.
-   */
-  includeSelfPairs?: boolean;
 }
+
+/*
+ * `includeSelfPairs` BURADAN KALDIRILDI.
+ *
+ * Tanımlıydı, JSDoc'u davranışını anlatıyordu ve findAspects onu hiç
+ * okumuyordu: false geçmek de true geçmek de aynı 25 açıyı döndürüyordu.
+ * Anlattığı şey (yalnızca kümeler arası karşılaştırma) zaten ayrı bir
+ * fonksiyon — findAspectsBetween. Etkisiz bir seçeneği tutmak, onu ayarlayan
+ * çağıranın bir şeyi kapattığını sanması demekti. Yerine gelen ayrım
+ * AspectPoint.group.
+ */
 
 /**
  * Finds aspects among a set of points.
  *
- * Each unordered pair is examined once. Results are sorted strongest first.
+ * Each unordered pair is examined once, except pairs that share a
+ * {@link AspectPoint.group} — those are not independent and are skipped.
+ * Results are sorted strongest first.
  *
  * ```ts
  * const aspects = findAspects([
@@ -204,7 +239,10 @@ export function findAspects(
 
   for (let i = 0; i < points.length; i++) {
     for (let j = i + 1; j < points.length; j++) {
-      const hit = examine(points[i], points[j], aspects, scheme);
+      const a = points[i], b = points[j];
+      if (a.group !== undefined && a.group === b.group) continue;
+
+      const hit = examine(a, b, aspects, scheme);
       if (hit) found.push(hit);
     }
   }
@@ -243,8 +281,22 @@ function examine(
 ): Aspect | null {
   const sep = separation(from.longitude, to.longitude);
 
-  // A pair can only satisfy one aspect at a time; keep the tightest in case
-  // two definitions overlap under a wide orb scheme.
+  /*
+   * Bir çift aynı anda tek bir açıyı sağlayabilir; iki tanım geniş bir orb
+   * şemasında çakışırsa EN GÜÇLÜ olanı tutuyoruz.
+   *
+   * Eskiden en DAR orb'lu tutuluyordu, ki bu modülün kendi sıralama ölçütüyle
+   * çelişiyordu: findAspects sonucu güce göre sıralıyor, dolayısıyla "hangi
+   * açı" sorusunu orb'la, "hangisi önce" sorusunu güçle cevaplamak tutarsız.
+   * Fark gerçek: geleneksel moiety şemasında Güneş–Ay çiftinin izni her açı
+   * için 13.5° olduğundan 37°'lik bir ayrım hem yarım-altmışlığa (orb 7,
+   * güç 0.144) hem yarım-kareye (orb 8, güç 0.163) uyuyor. Orb dar olanı,
+   * güç ise güçlü olanı seçer — ikincisi listenin geri kalanıyla aynı dili
+   * konuşuyor.
+   *
+   * Eşitlikte ilk tanım kazanıyor; MAJOR_ASPECTS başta geldiği için bu da
+   * majör lehine.
+   */
   let best: Aspect | null = null;
 
   for (const [key, aspect] of Object.entries(aspects)) {
@@ -253,7 +305,7 @@ function examine(
     if (orb > maxOrb) continue;
 
     const strength = (1 - orb / maxOrb) * aspect.weight;
-    if (best && best.orb <= orb) continue;
+    if (best && best.strength >= strength) continue;
 
     best = {
       aspect, from, to, separation: sep, orb, maxOrb, strength,
@@ -267,9 +319,26 @@ function examine(
 /**
  * Whether the aspect is applying (closing) or separating.
  *
- * Determined by nudging both points forward by their speeds and seeing
- * whether the orb shrinks. This handles retrograde motion and the 0/360
- * boundary without special cases.
+ * The orb is `|separation − angle|`, so the aspect is applying exactly when
+ * that quantity is **decreasing**. We take its derivative rather than
+ * sampling:
+ *
+ *   d(separation)/dt = sign(Δ) · (to.speed − from.speed),  Δ = signed b − a
+ *   d(orb)/dt        = sign(separation − angle) · d(separation)/dt
+ *
+ * This was a finite step of 0.01 days, and the step **overshot exactness**.
+ * The Moon covers 0.13° in that time, so any Moon aspect closer than about
+ * 0.06° to exact was pushed past perfection and reported as separating while
+ * it was still applying — measured: correct at an orb of 0°03'43", inverted
+ * at 0°03'40" and everything tighter. That is precisely the partile range,
+ * the one horary and electional work turns on. The threshold scaled with
+ * relative speed, so it silently affected the fastest pairs the most.
+ *
+ * The derivative has no step to overshoot. Retrograde motion and the 0/360
+ * boundary still need no special case: both live in the signed difference.
+ *
+ * At exactness the orb is at a corner (a minimum), so `sign(0) = 0` makes
+ * this report **separating** — from that instant the orb only widens.
  */
 function applyingState(
   from: AspectPoint,
@@ -279,12 +348,9 @@ function applyingState(
 ): { applying?: boolean } {
   if (from.speed === undefined || to.speed === undefined) return {};
 
-  const step = 0.01;   // days
-  const future = separation(
-    from.longitude + from.speed * step,
-    to.longitude + to.speed * step,
-  );
-  return {
-    applying: Math.abs(future - angle) < Math.abs(currentSeparation - angle),
-  };
+  const delta = signedSeparation(from.longitude, to.longitude);
+  const separationRate = Math.sign(delta) * (to.speed - from.speed);
+  const orbRate = Math.sign(currentSeparation - angle) * separationRate;
+
+  return { applying: orbRate < 0 };
 }

@@ -688,12 +688,31 @@ export async function createSwissEph(options: SwissEphOptions = {}) {
           message ?? `Could not compute house system '${system}'`, 'swe_houses_ex2');
       }
 
+      /*
+       * Alçalan ve Dip Noktası'nı BURADA türetiyoruz.
+       *
+       * Swiss Ephemeris ikisini döndürmüyor, çünkü tanım gereği eksenin öbür
+       * ucu. Çağıranın 7. ve 4. ev ucundan okuyacağı varsayılıyor — ama bu
+       * varsayım yalnızca dörtlü (quadrant) sistemlerde geçerli. Whole sign'da
+       * 4. ev ucu 0° Oğlak iken gerçek IC 1° Kova olabiliyor: 31° fark, ve
+       * çıktının hiçbir yerinde gerçek IC'ye ulaşmanın yolu yok. Equal, Morinus,
+       * Vehlow ve meridyen sistemlerinde de aynı durum.
+       *
+       * Yarım tur birimi bayrağa bağlı: Flag.Radians altında bütün açılar
+       * radyan döndüğü için 180 eklemek sessizce anlamsız bir sayı üretirdi.
+       */
+      const halfTurn = flags & Flag.Radians ? Math.PI : 180;
+      const opposite = (angle: number) =>
+        ((angle + halfTurn) % (halfTurn * 2) + halfTurn * 2) % (halfTurn * 2);
+
       return {
         cusps,
         requestedSystem: system,
         substituted: ret < 0,
         ascendant: ascmc[ASCMC.Ascendant],
         midheaven: ascmc[ASCMC.Midheaven],
+        descendant: opposite(ascmc[ASCMC.Ascendant]),
+        imumCoeli: opposite(ascmc[ASCMC.Midheaven]),
         armc: ascmc[ASCMC.Armc],
         vertex: ascmc[ASCMC.Vertex],
         equatorialAscendant: ascmc[ASCMC.EquatorialAscendant],
@@ -737,7 +756,18 @@ export async function createSwissEph(options: SwissEphOptions = {}) {
       assertLive();
       const { latitude, longitude, houseSystem = HouseSystem.Placidus } = options;
 
-      const houses = api.houses(jd, latitude, longitude, houseSystem);
+      /*
+       * calcOptions EVLERE DE gidiyor.
+       *
+       * Gitmediğinde çerçeveler karışıyordu: calcOptions'ta Flag.Sidereal ile
+       * çağrıldığında gezegenler sidereal, Yükselen ve Tepe Noktası tropikal
+       * geliyordu. Her lot Yükselen'i içerdiği için sonuç bir ayanamsa kadar
+       * (2026'da ~24°) kayıyor ve HİÇBİR uyarı çıkmıyordu — üstelik Şans ve
+       * Ruh gibi ayanamsanın sadeleştiği lotlar doğru görünmeye devam ederek
+       * hatayı iyice gizliyordu. Ölçüldü: sidereal istenen bir haritada
+       * Fortune 0°34' Yengeç dedi, doğrusu 6°51' İkizler'di.
+       */
+      const houses = api.houses(jd, latitude, longitude, houseSystem, options.calcOptions);
       const at = (body: number) => api.calc(jd, body, options.calcOptions).longitude;
 
       const points: ChartPoints = {

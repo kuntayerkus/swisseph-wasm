@@ -329,6 +329,88 @@ describeBuilt('türetilmiş katman — gerçek harita', () => {
       const koch = swe.lots(jd, { latitude: LAT, longitude: LON, houseSystem: 'K' });
       expect(placidus.lots.Fortune.longitude).toBeCloseTo(koch.lots.Fortune.longitude, 9);
     });
+
+    /**
+     * calcOptions EVLERE DE gitmeli.
+     *
+     * Gitmediğinde gezegenler sidereal, Yükselen tropikal kalıyordu. Her lot
+     * Yükselen'i içerdiği için sonuç bir ayanamsa kadar kayıyor ve hiçbir
+     * uyarı çıkmıyordu. Sinsi tarafı: Şans ve Ruh'ta ayanamsa (Ay − Güneş)
+     * farkında sadeleştiği için o iki lot doğru GÖRÜNMEYE devam ediyordu.
+     */
+    it('sidereal bayrağı gezegenlere ve açılara birlikte uygulanıyor', () => {
+      const norm = (d: number) => ((d % 360) + 360) % 360;
+      swe.setSiderealMode(mod.Ayanamsa.Lahiri, 0, 0);
+      const ayanamsa = swe.ayanamsa(jd);
+      expect(ayanamsa).toBeGreaterThan(20);   // test gerçekten bir şey ölçüyor
+
+      const tropical = swe.lots(jd, { latitude: LAT, longitude: LON });
+      const sidereal = swe.lots(jd, {
+        latitude: LAT, longitude: LON,
+        calcOptions: { flags: mod.Flag.Sidereal },
+      });
+
+      // Her nokta tam olarak bir ayanamsa geride olmalı — bazıları değil.
+      for (const key of ['ascendant', 'midheaven', 'sun', 'moon'] as const) {
+        expect(norm(sidereal.points[key]), key)
+          .toBeCloseTo(norm(tropical.points[key] - ayanamsa), 6);
+      }
+
+      /*
+       * Yücelme Noktası HARİÇ.
+       *
+       * A + B − C kalıbında üç terim de harita noktasıysa ayanamsa bir kez
+       * kalıyor ve lot tam bir ayanamsa kayıyor. Yücelme'nin B'si ise sabit
+       * bir derece (gündüz 19° Koç): (Asc−ay) + 19 − (Güneş−ay) = Asc + 19 −
+       * Güneş, yani sayı DEĞİŞMİYOR. Doğrusu da bu — sidereal bir haritada
+       * 19° Koç sidereal Koç'un 19. derecesi demek, ve sabit sayı zaten o
+       * çerçevede okunuyor.
+       */
+      for (const key of Object.keys(tropical.lots)) {
+        if (key === 'Exaltation') continue;
+        expect(norm(sidereal.lots[key].longitude), key)
+          .toBeCloseTo(norm(tropical.lots[key].longitude - ayanamsa), 6);
+      }
+      expect(norm(sidereal.lots.Exaltation.longitude))
+        .toBeCloseTo(norm(tropical.lots.Exaltation.longitude), 6);
+    });
+  });
+
+  describe('açı noktaları', () => {
+    /**
+     * Alçalan ve Dip Noktası TÜRETİLİYOR, ev ucundan okunmuyor.
+     *
+     * "DC 7. ev ucudur" yalnızca dörtlü sistemlerde doğru. Whole sign'da bu
+     * haritada 4. ev ucu 0° Oğlak, gerçek IC ise 1° Kova — 31° fark.
+     */
+    const norm = (d: number) => ((d % 360) + 360) % 360;
+
+    for (const system of ['P', 'K', 'W', 'A', 'M', 'X', 'O']) {
+      it(`'${system}': DC = Asc + 180, IC = MC + 180`, () => {
+        const h = swe.houses(jd, LAT, LON, system);
+        expect(norm(h.descendant - h.ascendant)).toBeCloseTo(180, 9);
+        expect(norm(h.imumCoeli - h.midheaven)).toBeCloseTo(180, 9);
+      });
+    }
+
+    it('dörtlü sistemde ev ucuyla örtüşüyor', () => {
+      const h = swe.houses(jd, LAT, LON, 'P');
+      expect(h.descendant).toBeCloseTo(h.cusps[6], 9);
+      expect(h.imumCoeli).toBeCloseTo(h.cusps[3], 9);
+    });
+
+    it('whole sign\'da ev ucuyla ÖRTÜŞMÜYOR — asıl mesele bu', () => {
+      const h = swe.houses(jd, LAT, LON, 'W');
+      expect(Math.abs(norm(h.imumCoeli - h.cusps[3]))).toBeGreaterThan(30);
+      expect(Math.abs(norm(h.descendant - h.cusps[6]))).toBeGreaterThan(25);
+    });
+
+    it('Flag.Radians altında da eksenin öbür ucu', () => {
+      const h = swe.houses(jd, LAT, LON, 'P', { flags: mod.Flag.Radians });
+      const half = Math.PI;
+      expect((h.descendant - h.ascendant + 2 * half) % (2 * half)).toBeCloseTo(half, 12);
+      expect(h.descendant).toBeLessThan(2 * Math.PI);
+    });
   });
 
   describe('yıldız kürasyonu', () => {

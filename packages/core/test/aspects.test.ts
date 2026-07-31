@@ -152,6 +152,97 @@ describe('uygulanan / ayrılan', () => {
   it('hız verilmezse applying tanımsız', () => {
     expect(findAspects([at('A', 0), at('B', 90)])[0].applying).toBeUndefined();
   });
+
+  /**
+   * PARTİL ARALIK — burası sonlu adımlı hesabın çöktüğü yerdi.
+   *
+   * Yön 0.01 günlük bir adım atılarak okunuyordu. Ay o sürede 0.13° gidiyor,
+   * yani tam açıya 0.06°'den yakın her Ay teması adımda TAM AÇIYI GEÇİYOR ve
+   * yaklaşırken "ayrılan" raporlanıyordu. Eşik bağıl hızla ölçekleniyordu,
+   * dolayısıyla en hızlı — ve horary'de en çok önemsenen — çiftleri en çok
+   * vuruyordu.
+   */
+  it('tam açıya çok yakınken bile yönü doğru okuyor', () => {
+    for (const gap of [0.0001, 0.005, 0.03, 0.061, 0.1]) {
+      const closing = findAspects([
+        at('Sun', 100, Body.Sun, 0.98),
+        at('Moon', 100 - gap, Body.Moon, 13.2),
+      ]);
+      expect(closing[0].applying, `${gap}° yaklaşıyor`).toBe(true);
+
+      const opening = findAspects([
+        at('Sun', 100, Body.Sun, 0.98),
+        at('Moon', 100 + gap, Body.Moon, 13.2),
+      ]);
+      expect(opening[0].applying, `${gap}° geçmiş`).toBe(false);
+    }
+  });
+
+  it('0/360 sınırını aşan oppozisyonda da yönü doğru okuyor', () => {
+    const found = findAspects([
+      at('A', 359, Body.Sun, 1.0),
+      at('B', 178.5, Body.Moon, 13.0),
+    ]);
+    expect(found[0].aspect.name).toBe('Opposition');
+    expect(found[0].applying).toBe(true);
+  });
+});
+
+/**
+ * Aynı gruptaki noktalar birbirine BAĞIMLI, dolayısıyla aralarındaki açı
+ * bir açı değil. Yükselen–MC ayrımı yalnızca enleme ve eğikliğe bağlı:
+ * 20° enlemde 89.98° çıkıyor ve haritanın en sıkı "karesi" olarak listenin
+ * başına oturuyordu — hem de o enlemdeki HER haritada.
+ */
+describe('AspectPoint.group', () => {
+  const asc = { name: 'Ascendant', longitude: 0, group: 'angles' };
+  const mc = { name: 'Midheaven', longitude: 89.98, group: 'angles' };
+  const sun = at('Sun', 90.5, Body.Sun, 1.0);
+
+  it('aynı gruptaki çifti eşleştirmiyor', () => {
+    expect(findAspects([asc, mc])).toHaveLength(0);
+  });
+
+  it('gruptaki noktayı grup dışındakiyle eşleştirmeye devam ediyor', () => {
+    const found = findAspects([asc, mc, sun]);
+    expect(found.map((a) => `${a.from.name}-${a.to.name}`).sort())
+      .toEqual(['Ascendant-Sun', 'Midheaven-Sun']);
+  });
+
+  it('grup verilmezse hiçbir çift elenmiyor', () => {
+    const plain = [{ ...asc, group: undefined }, { ...mc, group: undefined }];
+    expect(findAspects(plain)).toHaveLength(1);
+  });
+
+  it('findAspectsBetween grubu YOK SAYIYOR — iki ayrı harita karşılaştırılıyor', () => {
+    // Sinastride A'nın Yükselen'i ile B'nin MC'si gerçek bir temas.
+    expect(findAspectsBetween([asc], [mc])).toHaveLength(1);
+  });
+});
+
+describe('çakışan tanımlar', () => {
+  /**
+   * Geleneksel moiety şemasında Güneş–Ay çiftinin izni HER açı için 13.5°,
+   * dolayısıyla 37°'lik bir ayrım hem yarım-altmışlığa (orb 7) hem
+   * yarım-kareye (orb 8) uyuyor. Eskiden dar orb kazanıyordu, ama sonuç
+   * listesi GÜCE göre sıralanıyor — "hangi açı" ile "hangisi önce"
+   * sorularının farklı ölçütlerle cevaplanması tutarsızdı.
+   */
+  it('en dar orb\'lu değil, en GÜÇLÜ açı seçiliyor', () => {
+    const found = findAspects([
+      at('Sun', 0, Body.Sun), at('Moon', 37, Body.Moon),
+    ], { aspects: ALL_ASPECTS, orbs: TRADITIONAL_MOIETIES });
+
+    expect(found).toHaveLength(1);
+    expect(found[0].aspect.name).toBe('Semi-square');   // güç 0.163
+    expect(found[0].orb).toBeCloseTo(8, 9);             // yarım-altmışlığın orb'u 7 idi
+  });
+
+  it('eşit güçte majör açı kazanıyor', () => {
+    // MAJOR_ASPECTS ALL_ASPECTS içinde önce geldiği için eşitlikte o kalıyor.
+    const found = findAspects([at('A', 0), at('B', 0)], { aspects: ALL_ASPECTS });
+    expect(found[0].aspect.name).toBe('Conjunction');
+  });
 });
 
 describe('findAspectsBetween', () => {
