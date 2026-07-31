@@ -26,6 +26,7 @@
  * see the README.
  */
 
+import { createRequire } from 'node:module';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
@@ -45,9 +46,25 @@ import {
   renderAspects, renderDignities, renderHouses, renderLots, renderPositions, renderSect,
 } from './chart.js';
 
+/*
+ * Sürüm package.json'dan OKUNUYOR, elle yazılmıyor.
+ *
+ * Sabit bir string burada sessizce bayatlıyor: 0.2.0 yayınlandıktan sonra
+ * sunucu istemcilere hâlâ "swisseph 0.1.0" diye tanıtıyordu. MCP istemcisinin
+ * sürümü gördüğü tek yer burası, dolayısıyla bir hata raporu yanlış sürümü
+ * işaret eder ve yayının kendisi doğruyken kimse fark etmez. Ölçüldü —
+ * initialize yanıtı 0.1.0 dönerken npx 0.2.0 paketini çalıştırıyordu.
+ *
+ * `dist/index.js` bir üst dizinde paketin package.json'ı var; npm her tarball'a
+ * onu koyduğu için yayınlanmış halde de çözülüyor. createRequire kullanılıyor
+ * çünkü paket ESM ve JSON import'u tsconfig tarafında ek ayar isterdi.
+ */
+const require = createRequire(import.meta.url);
+const { version } = require('../package.json') as { version: string };
+
 const server = new McpServer({
   name: 'swisseph',
-  version: '0.1.0',
+  version,
 });
 
 // --- shared input shapes -------------------------------------------------

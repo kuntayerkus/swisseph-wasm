@@ -20,10 +20,13 @@
  * `npm pack` yerel bir tarball kuruyor, dolayısıyla ağ gerekmez.
  */
 
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync,
+  rmSync, writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createReporter } from './_harness.mjs';
 
@@ -57,6 +60,43 @@ const run = (args, cwd) => {
     cwd, encoding: 'utf8', shell: true, stdio: ['ignore', 'pipe', 'pipe'],
   });
 };
+
+/**
+ * MCP sunucusunu bir kez konuşturur ve bildirdiği sürümü döndürür.
+ *
+ * stdin `input` ile yazılıp kapatıldığı için sunucu yanıtını verip çıkıyor —
+ * ayrı bir sonlandırma mantığı gerekmiyor. Yanıt alınamazsa null.
+ */
+function initializeHandshake(entry) {
+  const request = JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'initialize',
+    params: {
+      protocolVersion: '2024-11-05',
+      capabilities: {},
+      clientInfo: { name: 'check-pack', version: '1.0.0' },
+    },
+  }) + '\n';
+
+  const res = spawnSync(process.execPath, [entry], {
+    input: request, encoding: 'utf8', timeout: 60_000,
+  });
+
+  for (const line of (res.stdout ?? '').split('\n')) {
+    if (!line.trim()) continue;
+    try {
+      const msg = JSON.parse(line);
+      if (msg.id === 1) return msg.result?.serverInfo?.version ?? null;
+    } catch {
+      // Sunucunun stdout'una karışan JSON olmayan satırlar yok sayılır.
+    }
+  }
+  return null;
+}
+
+// 6. adımda repo'nun node_modules'ü altına açılan kopya; finally temizliyor.
+let extracted = null;
 
 try {
   // --- 1. paketle -------------------------------------------------------
@@ -181,8 +221,91 @@ swe.dispose();
       String(dep).replace(/^[\^~]/, '') === corePkg.version,
       `"${dep}" vs çekirdek ${corePkg.version}`);
   }
+
+  /*
+   * --- 6. MCP sunucusu YAYINLANMIŞ DÜZENDE açılıyor mu ------------------
+   *
+   * Buraya kadar mcp yalnızca paketlenip bağımlılık string'i okunuyordu;
+   * sunucunun kendisi hiç çalıştırılmıyordu. Bir MCP istemcisinin gördüğü ilk
+   * ve tek sürüm bilgisi `initialize` yanıtındaki serverInfo, ve o sürüm
+   * package.json'dan okunuyor — yani `dist/index.js`'ten bir üst dizindeki
+   * dosyanın yayınlanmış düzende de çözülmesi gerekiyor. Ağaçta çalışması
+   * bunu kanıtlamıyor. Ölçüldü: sabit kodlanmış '0.1.0' 0.2.0 yayınlandıktan
+   * sonra da öyle kaldı ve hiçbir kontrol fark etmedi.
+   *
+   * Tarball `npm install` ile KURULMUYOR, açılıyor. Kurmak @kuntay/swisseph'i
+   * registry'den çözmeye kalkardı ve yayın sırasında çekirdeğin yeni sürümü
+   * henüz orada olmadığı için 404 alırdı — ultracode.md'de ölçülmüş tuzak.
+   * Bunun yerine bağımlılık, 2. adımda zaten kurulmuş çekirdekten kopyalanıyor.
+   */
+  if (mcp && core) {
+    r.section('6) MCP sunucusu yayınlanmış düzende açılıyor mu');
+
+    /*
+     * Repo'nun node_modules'ü ALTINA çıkarılıyor, geçici dizine değil.
+     *
+     * MCP paketinin üç bağımlılığı var: @kuntay/swisseph, @modelcontextprotocol/sdk
+     * ve zod. Yalıtılmış bir dizinde açılınca ilki kopyalansa bile diğer ikisi
+     * ERR_MODULE_NOT_FOUND veriyor, üstelik SDK'nın kendi geçişli bağımlılıkları
+     * repo kökünde hoist edilmiş durumda — hepsini kopyalamak kırılgan olurdu.
+     * node_modules/ altında Node çözümleme sırasında üst dizinlere yürüyüp
+     * <repo>/node_modules'ü buluyor ve üçü de çözülüyor, bu betiğin ölçmek
+     * istediği şey (dist/../package.json okunabiliyor mu) ise değişmiyor.
+     */
+    /*
+     * Dizin adı her koşuda BENZERSİZ, sabit değil.
+     *
+     * Sabit adla çalışırken temizlik başarısız olursa bayat bir çıkarma
+     * kalıyor ve kontrol sessizce yanlış yere geçiyor: `expected` de
+     * `reported` da o eski kopyadan okunacağı için ikisi uyuşur ve test
+     * yeşil verir. Windows'ta bu teorik değil — node_modules altında
+     * rmSync(force) hata vermeden hiçbir şey silmiyor (rm -rf siliyor),
+     * muhtemelen dizini açık tutan bir izleyici yüzünden.
+     *
+     * mkdtemp ile bayatlık imkânsız hale geliyor; temizlik ise en iyi çaba.
+     */
+    const nodeModules = join(ROOT, 'node_modules');
+    for (const entry of readdirSync(nodeModules)) {
+      if (entry.startsWith('.check-pack-mcp-')) {
+        try { rmSync(join(nodeModules, entry), { recursive: true, force: true }); }
+        catch { /* kalıntı zararsız, sonraki koşu kendi dizinini açıyor */ }
+      }
+    }
+    const mcpRoot = mkdtempSync(join(nodeModules, '.check-pack-mcp-'));
+    extracted = mcpRoot;
+
+    /*
+     * tar'a HİÇBİR mutlak yol verilmiyor: tarball hedefe kopyalanıp cwd oraya
+     * alınıyor, argümanların tamamı göreli.
+     *
+     * Git for Windows'un GNU tar'ı mutlak Windows yollarını iki ayrı şekilde
+     * bozuyor ve ikisi de ölçüldü: `-f C:\...` sürücü harfindeki iki noktayı
+     * host ayracı sanıp "Cannot connect to C:" diyor, `-C C:\...` ise ters
+     * bölüleri kaçış karakteri sayıp "No such file or directory" veriyor.
+     * Göreli yollar her iki tar uygulamasında da sorunsuz.
+     */
+    const localTarball = join(mcpRoot, 'pkg.tgz');
+    copyFileSync(mcp.file, localTarball);
+    execFileSync('tar', ['-xzf', 'pkg.tgz', '--strip-components=1'],
+      { cwd: mcpRoot, stdio: ['ignore', 'pipe', 'pipe'] });
+    rmSync(localTarball, { force: true });
+
+    const entry = join(mcpRoot, 'dist', 'index.js');
+    r.check('giriş noktası açıldı', existsSync(entry), 'dist/index.js');
+    r.check('package.json bir üst dizinde', existsSync(join(mcpRoot, 'package.json')),
+      'dist/../package.json — serverInfo sürümü buradan okunuyor');
+
+    const expected = JSON.parse(readFileSync(join(mcpRoot, 'package.json'), 'utf8')).version;
+    const reported = initializeHandshake(entry);
+
+    r.check('initialize yanıtı geldi', reported !== null,
+      reported ? `serverInfo.version ${reported}` : 'sunucu yanıt vermedi');
+    r.check('bildirilen sürüm package.json ile aynı', reported === expected,
+      `${reported} vs ${expected}`);
+  }
 } finally {
   rmSync(work, { recursive: true, force: true });
+  if (extracted) rmSync(extracted, { recursive: true, force: true });
 }
 
 r.finish('Yayınlanan tarball temiz bir tüketicide çalışıyor.');
