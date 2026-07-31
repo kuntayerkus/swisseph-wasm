@@ -7,7 +7,7 @@ All notable changes to this project are documented here. The format follows
 Note that the vendored Swiss Ephemeris version (`2.10.03`) is independent of
 this package's version; upstream changes are called out explicitly.
 
-## [Unreleased]
+## [0.2.0] — 2026-07-31
 
 An audit of the house, angle, aspect and lot code. The Arabic lot formulae and
 the house cusps themselves came through clean — cusps were re-verified against
