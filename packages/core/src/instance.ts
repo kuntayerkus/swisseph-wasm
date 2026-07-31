@@ -41,6 +41,22 @@ import {
 
 const DEFAULT_EPHE_PATH = '/ephe';
 
+/**
+ * Anything the WebAssembly module prints, sent somewhere that is never a data
+ * channel.
+ *
+ * Under Node this is `process.stderr`; in a browser there is no such thing, so
+ * it falls back to `console.error`. The check is on the object rather than on
+ * a `typeof window` guess, because the bundlers that ship this to a browser
+ * also shim `process` — partially.
+ */
+function writeDiagnostic(text: string): void {
+  const stderr = (globalThis as { process?: { stderr?: { write?: (s: string) => void } } })
+    .process?.stderr;
+  if (typeof stderr?.write === 'function') stderr.write(`${text}\n`);
+  else console.error(text);
+}
+
 /** char serr[AS_MAXCH] — sweodef.h:259. */
 const ERROR_BUFFER_SIZE = 256;
 
@@ -270,7 +286,25 @@ export interface ReturnResult {
  * bir sorun yok.
  */
 export async function createSwissEph(options: SwissEphOptions = {}) {
-  const wasm = await createSwissEphModule();
+  /*
+   * WASM'in stdout'u stderr'e yönlendiriliyor.
+   *
+   * Emscripten glue'sunun ürettiği hâli `var out=console.log.bind(console)` —
+   * yani modülün stdout'a yazdığı her şey SÜRECİN stdout'una gidiyor. Bu
+   * kütüphanenin en büyük kullanıcısı bir MCP sunucusu ve orada stdout
+   * protokolün kendisi: araya düşecek tek bir satır JSON-RPC akışını bozar,
+   * istemci sunucuyu düşürür ve ortada hiçbir hata mesajı olmaz.
+   *
+   * Derlenen C dosyalarındaki printf çağrılarının tamamı bugün ölü kod
+   * (`if ((0))`, `#if 0`) — yani şu anda akan bir şey yok. Ölçüm bu; koruma
+   * ise gelecek için: abort yolları, FS uyarıları ve yukarı akıştan gelecek
+   * yeni bir printf, hepsi sessizce protokolü bozabilecek durumda. Yönlendirme
+   * bedava, ve stdout'a düşmesi gereken tek bir satır yok.
+   */
+  const wasm = await createSwissEphModule({
+    print: writeDiagnostic,
+    printErr: writeDiagnostic,
+  });
 
   // Tamponlar bir kez ayrılıp tekrar kullanılıyor: çağrı başına malloc/free
   // yok. Örnek tek iş parçacığında sıralı kullanıldığı için güvenli.

@@ -166,9 +166,21 @@ something that can be reasoned out or recalled.
 [Model Context Protocol](https://modelcontextprotocol.io) server, so the model
 calls out for the numbers instead of inventing them.
 
+One command wires it into every MCP client it finds on the machine, with the
+launch line each one needs:
+
 ```bash
-claude mcp add swisseph -- npx -y @kuntay/swisseph-mcp
+npx -y @kuntay/swisseph-mcp install
 ```
+
+`npx -y @kuntay/swisseph-mcp doctor` says what it found and what it would
+write; `... config` prints the block to paste by hand.
+
+Configuring it by hand on Windows needs `"command": "cmd"` with
+`["/c", "npx", …]`, not `"command": "npx"`: clients spawn without a shell,
+there is no `npx` executable to spawn, and Node refuses `npx.cmd` outright
+since the BatBadBut fix. The measurements are in
+[packages/mcp/README.md](packages/mcp/README.md).
 
 Eight tools: `natal_chart`, `transits`, `synastry`, `return_chart`,
 `eclipses`, `rise_set`, `time_lords`, `declinations`.

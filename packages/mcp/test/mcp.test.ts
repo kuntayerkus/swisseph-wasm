@@ -9,17 +9,29 @@
  * numaralı yolu o ve LLM'in varsayılan davranışı tam olarak orada hata yapmak.
  */
 
-import { existsSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { resolveTime, formatClock } from '../src/time.js';
-import { formatLongitude, formatDeclination, formatAngle } from '../src/format.js';
+import {
+  explainUnavailable,
+  formatLongitude, formatDeclination, formatAngle, formatCoordinate,
+} from '../src/format.js';
+import {
+  installIntoJson, knownClients, launchCommand, renderConfig, serverEntry,
+  type Client as McpClientTarget,
+} from '../src/cli.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SERVER = join(HERE, '..', 'dist', 'index.js');
+const BIN = join(HERE, '..', 'dist', 'cli.js');
 const hasBuild = existsSync(SERVER);
 
 // --- saf birimler --------------------------------------------------------
@@ -46,6 +58,24 @@ describe('derece biçimlendirme', () => {
   it('deklinasyon işaretli', () => {
     expect(formatDeclination(19.2)).toBe(`+19°12'00"`);
     expect(formatDeclination(-19.2)).toBe(`-19°12'00"`);
+  });
+
+  /**
+   * "40.18" yazan biri çoğu zaman 40°18' demek istiyor, ve iki okuma 12
+   * yay-dakikası ayrı. Sayıdan hangisi olduğu ANLAŞILAMAZ, o yüzden tahmin
+   * etmiyoruz — kullanılan yorumu öbür gösterimde de basıyoruz ki yanlış
+   * yazılmış koordinat bakışta görünsün.
+   */
+  it('koordinatı iki gösterimde birden veriyor', () => {
+    expect(formatCoordinate(40.18, 'N', 'S')).toBe(`40.1800°N (40°10'48")`);
+    expect(formatCoordinate(40 + 18 / 60, 'N', 'S')).toBe(`40.3000°N (40°18'00")`);
+    expect(formatCoordinate(35.54, 'E', 'W')).toBe(`35.5400°E (35°32'24")`);
+  });
+
+  it('koordinatta yarımküre işaretten okunuyor', () => {
+    expect(formatCoordinate(-33.87, 'N', 'S')).toContain('°S');
+    expect(formatCoordinate(-74.01, 'E', 'W')).toContain('°W');
+    expect(formatCoordinate(0, 'N', 'S')).toContain('°N');
   });
 
   it('açı biçimi derece-dakika', () => {
@@ -336,6 +366,163 @@ describe('geçersiz takvim tarihleri', () => {
       expect([back.getUTCFullYear(), back.getUTCMonth() + 1, back.getUTCDate()])
         .toEqual([...expected]);
     }
+  });
+});
+
+// --- bağlanma yüzeyi -----------------------------------------------------
+
+/*
+ * Bu bölümün tamamı tek bir şikâyetten geliyor: model haritayı MCP'den değil,
+ * "yan yollar üreterek" almıştı. Sunucu sağlamdı; ona ULAŞILAMIYORDU. Bu
+ * testler tam olarak o mesafeyi koruyor — açılış satırı, argüman işleme ve
+ * araca ulaşılamadığında modele söylenen şey.
+ */
+
+describe('açılış satırı', () => {
+  /*
+   * Windows'ta `"command": "npx"` ÇALIŞMIYOR ve bu ölçüldü (Node 24.12 /
+   * Windows 11): `npx` ENOENT — ortada o adda bir çalıştırılabilir yok, sadece
+   * `npx.cmd` var; `npx.cmd` ise EINVAL — Node BatBadBut düzeltmesinden
+   * (CVE-2024-27980) beri .cmd/.bat'ı kabuksuz başlatmayı reddediyor. Çalışan
+   * tek biçim `cmd` + `/c`, ve o biçim kabuk KULLANAN istemcilerde de
+   * çalışıyor, yani Windows'ta tercih meselesi değil.
+   */
+  it('Windows için cmd /c sarmalıyor', () => {
+    expect(launchCommand('win32')).toEqual({
+      command: 'cmd',
+      args: ['/c', 'npx', '-y', '@kuntay/swisseph-mcp'],
+    });
+  });
+
+  it('diğer platformlarda düz npx', () => {
+    for (const platform of ['darwin', 'linux'] as const) {
+      expect(launchCommand(platform), platform).toEqual({
+        command: 'npx',
+        args: ['-y', '@kuntay/swisseph-mcp'],
+      });
+    }
+  });
+
+  /*
+   * VS Code haritaya `servers` diyor, geri kalan herkes `mcpServers`. Yanlış
+   * anahtar sessizce yok sayılıyor: dosya geçerli JSON, istemci hiçbir şey
+   * demiyor, sunucu ortaya çıkmıyor.
+   */
+  it('VS Code için anahtar servers', () => {
+    const vscode = knownClients('darwin').find((c) => c.id === 'vscode')!;
+    expect(vscode.mapKey).toBe('servers');
+    expect(JSON.parse(renderConfig(vscode, 'darwin'))).toHaveProperty('servers.swisseph');
+  });
+
+  it('diğer JSON istemcileri için anahtar mcpServers', () => {
+    for (const client of knownClients('darwin').filter((c) => c.kind === 'json')) {
+      if (client.id === 'vscode') continue;
+      expect(JSON.parse(renderConfig(client, 'darwin')), client.id)
+        .toHaveProperty('mcpServers.swisseph');
+    }
+  });
+});
+
+describe('yapılandırma yazma', () => {
+  let scratch: string;
+
+  beforeAll(() => {
+    scratch = mkdtempSync(join(tmpdir(), 'swisseph-cli-'));
+  });
+
+  afterAll(() => {
+    rmSync(scratch, { recursive: true, force: true });
+  });
+
+  const target = (name: string, body?: string): McpClientTarget => {
+    const file = join(scratch, name);
+    if (body !== undefined) writeFileSync(file, body, 'utf8');
+    return { id: 'test', label: 'Test', kind: 'json', file, mapKey: 'mcpServers' };
+  };
+
+  it('başka sunucuları koruyor', () => {
+    const client = target('keeps.json', JSON.stringify({
+      mcpServers: { other: { command: 'other-server', args: [] } },
+    }));
+    expect(installIntoJson(client).status).toBe('written');
+
+    const written = JSON.parse(readFileSync(client.file!, 'utf8'));
+    expect(written.mcpServers.other).toEqual({ command: 'other-server', args: [] });
+    expect(written.mcpServers.swisseph).toEqual(serverEntry());
+  });
+
+  /*
+   * İki kez çalıştırmak zararsız olmalı. Bir kurulum komutunun ikinci kez
+   * çalıştırıldığında ne yaptığı belirsizse kimse birincisinden emin olamaz.
+   */
+  it('ikinci çalıştırmada dosyaya dokunmuyor', () => {
+    const client = target('idempotent.json', '{}');
+    expect(installIntoJson(client).status).toBe('written');
+    expect(installIntoJson(client).status).toBe('unchanged');
+  });
+
+  /*
+   * VS Code'un mcp.json'ı yorum kabul ediyor, JSON.parse etmiyor. Bu dosyayı
+   * "ayrıştıramadım, baştan yazayım" diye ele almak, içindeki bütün sunucuları
+   * silmek demek — bu komutun üretebileceği EN KÖTÜ sonuç. O yüzden
+   * ayrıştırılamayan dosyaya dokunulmuyor.
+   */
+  it('ayrıştırılamayan dosyayı olduğu gibi bırakıyor', () => {
+    const body = '{\n  // yorum\n  "servers": {}\n}';
+    const client = target('jsonc.json', body);
+    const result = installIntoJson(client);
+    expect(result.status).toBe('failed');
+    expect(readFileSync(client.file!, 'utf8')).toBe(body);
+  });
+
+  it('değiştirdiği dosyanın öncesini .bak olarak saklıyor', () => {
+    const before = JSON.stringify({ mcpServers: {} });
+    const client = target('backup.json', before);
+    const result = installIntoJson(client);
+    expect(result.backup).toBe(`${client.file}.bak`);
+    expect(readFileSync(result.backup!, 'utf8')).toBe(before);
+  });
+
+  it('--dry-run hiçbir şey yazmıyor', () => {
+    const client = target('dry.json', '{}');
+    expect(installIntoJson(client, { dryRun: true }).status).toBe('would-write');
+    expect(readFileSync(client.file!, 'utf8')).toBe('{}');
+  });
+});
+
+describe('ulaşılamayan cisim mesajı', () => {
+  const RAW =
+    "Ephemeris file 'seas_18.se1' is not loaded. It ships in " +
+    "@kuntay/swisseph-data. Load it with mountEphemeris({ 'seas_18.se1': " +
+    'bytes }) or, under Node, mountEphemerisDirectory(dir).';
+
+  /*
+   * Çekirdeğin metni kütüphaneyi elinde tutan bir GELİŞTİRİCİ için doğru. Bu
+   * kanalda okuyan ise elinde yalnızca bu araç olan bir model, ve ona
+   * "mountEphemeris çağır" demek "git kod yaz" demek. Bu sunucunun önlemek
+   * için var olduğu davranışın ta kendisi.
+   */
+  it('modele API çağırmasını söylemiyor', () => {
+    const out = explainUnavailable(RAW);
+    expect(out).not.toContain('mountEphemeris');
+    expect(out).not.toContain('mountEphemerisDirectory');
+  });
+
+  it('operatörün yapacağı şeyi söylüyor', () => {
+    const out = explainUnavailable(RAW);
+    expect(out).toContain('npm install @kuntay/swisseph-data');
+    expect(out).toContain('SWISSEPH_EPHE_PATH');
+    expect(out).toContain('seas_18.se1');
+  });
+
+  /** Yan yolu açıkça kapatan cümle — asıl mesele bu. */
+  it('yerine bir sayı uydurmayı yasaklıyor', () => {
+    expect(explainUnavailable(RAW)).toMatch(/Do NOT supply a position/);
+  });
+
+  it('dosya hatası olmayan mesajlara dokunmuyor', () => {
+    const other = 'houses() failed at a latitude beyond the polar circle';
+    expect(explainUnavailable(other)).toBe(other);
   });
 });
 
@@ -733,4 +920,89 @@ describeBuilt('MCP protokolü', () => {
     const content = result.content as { text: string }[];
     expect(content[0].text).toMatch(/not recognised/);
   }, 60_000);
+});
+
+describeBuilt('bin', () => {
+  const run = (args: string[]) => spawnSync(process.execPath, [BIN, ...args], {
+    input: '', encoding: 'utf8', timeout: 60_000,
+  });
+
+  /*
+   * Bir zamanlar argv tamamen yok sayılıyordu: `--version` sunucuyu başlatıyor
+   * ve terminalde stdin beklerken asılı kalıyordu. Kurulumunu denetlemek için
+   * bunu yazan kişinin gördüğü şey, sağlıklı bir sunucunun bozuk hâliydi.
+   */
+  it('--version sürümü basıp çıkıyor', () => {
+    const { version } = JSON.parse(
+      readFileSync(join(HERE, '..', 'package.json'), 'utf8')) as { version: string };
+    const res = run(['--version']);
+    expect(res.status).toBe(0);
+    expect(res.stdout.trim()).toBe(version);
+    expect(res.stderr).not.toContain('ready');
+  }, 60_000);
+
+  it('--help kullanım metnini basıyor', () => {
+    const res = run(['--help']);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toContain('swisseph-mcp doctor');
+  }, 60_000);
+
+  /*
+   * Tanımadığı argümanı yok sayıp yine de sunucu olmak, yanlış yapılandırmayı
+   * gizler — istemci sessizce beklediğini alamaz ve sebebi hiçbir yerde yazmaz.
+   */
+  it('tanımadığı argümanda sıfır olmayan kodla çıkıyor', () => {
+    const res = run(['--nonesuch']);
+    expect(res.status).not.toBe(0);
+    expect(res.stderr).toContain('unrecognised');
+  }, 60_000);
+
+  it('doctor gerçek bir hesap yapıyor', () => {
+    const res = run(['doctor']);
+    expect(res.status).toBe(0);
+    expect(res.stdout).toMatch(/Sun at J2000\.0 = 280\.\d+°/);
+    expect(res.stdout).toContain('Launch line for this platform');
+  }, 120_000);
+
+  it('config yazmadan geçerli JSON basıyor', () => {
+    const res = run(['config', '--json']);
+    expect(res.status).toBe(0);
+    expect(JSON.parse(res.stdout)).toEqual({ mcpServers: { swisseph: serverEntry() } });
+  }, 60_000);
+});
+
+/*
+ * stdout PROTOKOLÜN KENDİSİ.
+ *
+ * Emscripten glue'su stdout'u varsayılan olarak console.log'a bağlıyor, yani
+ * WASM'den kaçan tek bir satır JSON-RPC akışına düşer, istemci sunucuyu düşürür
+ * ve ortada hata mesajı olmaz — modelin aracı bulamayıp kendi yoluna gitmesi
+ * için bu yeterli. instance.ts akışı stderr'e çeviriyor; burada gerçek bir
+ * oturumda kanalın temiz kaldığı doğrulanıyor.
+ */
+describeBuilt('stdout yalnızca protokol taşıyor', () => {
+  it('tam bir harita çağrısı sonrası kanalda protokol dışı satır yok', () => {
+    const messages = [
+      { jsonrpc: '2.0', id: 1, method: 'initialize', params: {
+        protocolVersion: '2024-11-05', capabilities: {},
+        clientInfo: { name: 'purity', version: '1.0' } } },
+      { jsonrpc: '2.0', method: 'notifications/initialized' },
+      { jsonrpc: '2.0', id: 2, method: 'tools/call', params: {
+        name: 'natal_chart',
+        arguments: {
+          date: '1990-05-15', time: '17:30', timezone: 'Europe/Istanbul',
+          latitude: 39.93, longitude: 32.86,
+        } } },
+    ].map((m) => `${JSON.stringify(m)}\n`).join('');
+
+    const res = spawnSync(process.execPath, [SERVER], {
+      input: messages, encoding: 'utf8', timeout: 120_000,
+    });
+
+    const lines = res.stdout.split('\n').filter((l) => l.trim() !== '');
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) {
+      expect(() => JSON.parse(line) as unknown, line.slice(0, 80)).not.toThrow();
+    }
+  }, 120_000);
 });

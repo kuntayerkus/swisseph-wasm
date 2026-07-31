@@ -15,7 +15,9 @@ import {
   MODERN_ORBS, TIGHT_ORBS, TRADITIONAL_MOIETIES,
   type AspectPoint, type OrbScheme, type SwissEph,
 } from '@kuntay/swisseph';
-import { formatAngle, formatDeclination, formatLongitude, pad } from './format.js';
+import {
+  explainUnavailable, formatAngle, formatDeclination, formatLongitude, pad,
+} from './format.js';
 
 /** The bodies a chart reports, in traditional then modern order. */
 const CHART_BODIES: readonly number[] = [
@@ -137,7 +139,8 @@ export function computeChart(
         name: swe.planetName(body),
         body,
         longitude: NaN, speed: NaN, retrograde: false, declination: NaN,
-        unavailable: error instanceof Error ? error.message : String(error),
+        unavailable: explainUnavailable(
+          error instanceof Error ? error.message : String(error)),
       });
     }
   }

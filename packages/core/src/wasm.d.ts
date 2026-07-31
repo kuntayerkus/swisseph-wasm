@@ -50,6 +50,20 @@ declare module '*/wasm/swisseph.mjs' {
     HEAPU8: Uint8Array;
   }
 
-  const createSwissEphModule: () => Promise<SwissEphWasmModule>;
+  /**
+   * emcc'nin kabul ettiği kurulum alanlarından kullandıklarımız.
+   *
+   * `print` ve `printErr` verilmezse üretilen glue bunları
+   * `console.log` / `console.error`'a bağlıyor — yani WASM'in stdout'u
+   * sürecin stdout'u oluyor. Bkz. instance.ts, createSwissEphModule çağrısı.
+   */
+  export interface SwissEphWasmOptions {
+    print?: (text: string) => void;
+    printErr?: (text: string) => void;
+  }
+
+  const createSwissEphModule: (
+    options?: SwissEphWasmOptions,
+  ) => Promise<SwissEphWasmModule>;
   export default createSwissEphModule;
 }

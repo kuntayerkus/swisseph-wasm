@@ -36,10 +36,12 @@ import {
   findDeclinationAspects, outOfBounds,
   type SwissEph,
 } from '@kuntay/swisseph';
+import { assertSupportedNode } from './cli.js';
 import { ephemerisStatus, withEphemeris } from './session.js';
 import { formatOffset, resolveTime, type TimeInput } from './time.js';
 import {
-  formatAngle, formatDeclination, formatJulianDay, formatLongitude, pad, sections,
+  formatAngle, formatCoordinate, formatDeclination, formatJulianDay,
+  formatLongitude, pad, sections,
 } from './format.js';
 import {
   ASPECT_ORDER_NOTE, ORB_SCHEMES, aspectPoints, computeChart,
@@ -163,8 +165,6 @@ function header(
   anyMoshier: boolean,
 ): string {
   const placeLabel = place.label ? `${place.label} — ` : '';
-  const north = place.latitude >= 0 ? 'N' : 'S';
-  const east = place.longitude >= 0 ? 'E' : 'W';
 
   const zoneNote = resolved.source === 'iana'
     ? `${resolved.zone} (${resolved.offsetLabel})`
@@ -191,8 +191,13 @@ function header(
          'the birth record distinguishes them.']
       : []),
     `Julian day: ${resolved.julianDay.toFixed(6)}`,
-    `Place: ${placeLabel}${Math.abs(place.latitude).toFixed(4)}°${north} ` +
-    `${Math.abs(place.longitude).toFixed(4)}°${east}`,
+    // Koordinat İKİ gösterimde birden: girdi ondalık derece, ama "40.18" yazan
+    // biri çoğu zaman 40°18' demek istiyor. İkisi 12 yay-dakikası ayrı ve
+    // ikisi de geçerli sayı olduğu için hangisinin kastedildiği tespit
+    // EDİLEMEZ — o yüzden tahmin etmiyor, kullanılanı öbür gösterimde de
+    // yazıyoruz. Yanlış yazılmış bir koordinat orada bakışta belli oluyor.
+    `Place: ${placeLabel}${formatCoordinate(place.latitude, 'N', 'S')} ` +
+    `${formatCoordinate(place.longitude, 'E', 'W')}`,
     `Ephemeris: ${precision}`,
   ].join('\n');
 }
@@ -912,6 +917,13 @@ server.registerTool('declinations', {
 }));
 
 // --- start ---------------------------------------------------------------
+
+/*
+ * Sürüm kapısı burada da duruyor, cli.ts'de olmasına rağmen. Bu dosya paketin
+ * `main`i ve `npm run mcp` doğrudan onu çalıştırıyor; kapı yalnızca bin'de
+ * olsaydı en olası eski-Node yolu onu atlardı.
+ */
+assertSupportedNode();
 
 /*
  * stdout MCP protokolünün kendisi. Oraya yazılan her şey akışı bozar, o

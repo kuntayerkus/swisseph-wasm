@@ -62,10 +62,15 @@ const run = (args, cwd) => {
 };
 
 /**
- * MCP sunucusunu bir kez konuşturur ve bildirdiği sürümü döndürür.
+ * MCP sunucusunu bir kez konuşturur.
  *
  * stdin `input` ile yazılıp kapatıldığı için sunucu yanıtını verip çıkıyor —
- * ayrı bir sonlandırma mantığı gerekmiyor. Yanıt alınamazsa null.
+ * ayrı bir sonlandırma mantığı gerekmiyor.
+ *
+ * Ham stdout da dönüyor, çünkü bu kanalda sürümün doğru olması kadar BAŞKA
+ * HİÇBİR ŞEYİN OLMAMASI da önemli: stdout protokolün kendisi ve araya düşen
+ * tek bir satır — bir uyarı, WASM'den kaçmış bir printf — akışı bozup istemciye
+ * sunucuyu düşürtüyor, hem de ortada hata mesajı olmadan.
  */
 function initializeHandshake(entry) {
   const request = JSON.stringify({
@@ -83,16 +88,21 @@ function initializeHandshake(entry) {
     input: request, encoding: 'utf8', timeout: 60_000,
   });
 
-  for (const line of (res.stdout ?? '').split('\n')) {
-    if (!line.trim()) continue;
+  const stdout = res.stdout ?? '';
+  const lines = stdout.split('\n').filter((l) => l.trim() !== '');
+  let version = null;
+  const strayLines = [];
+
+  for (const line of lines) {
     try {
       const msg = JSON.parse(line);
-      if (msg.id === 1) return msg.result?.serverInfo?.version ?? null;
+      if (msg.id === 1) version = msg.result?.serverInfo?.version ?? null;
     } catch {
-      // Sunucunun stdout'una karışan JSON olmayan satırlar yok sayılır.
+      strayLines.push(line);
     }
   }
-  return null;
+
+  return { version, strayLines };
 }
 
 // 6. adımda repo'nun node_modules'ü altına açılan kopya; finally temizliyor.
@@ -295,13 +305,53 @@ swe.dispose();
     r.check('package.json bir üst dizinde', existsSync(join(mcpRoot, 'package.json')),
       'dist/../package.json — serverInfo sürümü buradan okunuyor');
 
-    const expected = JSON.parse(readFileSync(join(mcpRoot, 'package.json'), 'utf8')).version;
-    const reported = initializeHandshake(entry);
+    const manifest = JSON.parse(readFileSync(join(mcpRoot, 'package.json'), 'utf8'));
+    const expected = manifest.version;
+    const { version: reported, strayLines } = initializeHandshake(entry);
 
     r.check('initialize yanıtı geldi', reported !== null,
       reported ? `serverInfo.version ${reported}` : 'sunucu yanıt vermedi');
     r.check('bildirilen sürüm package.json ile aynı', reported === expected,
       `${reported} vs ${expected}`);
+
+    /*
+     * stdout'ta JSON-RPC DIŞINDA hiçbir şey yok.
+     *
+     * Emscripten glue'su stdout'u varsayılan olarak console.log'a bağlıyor,
+     * yani WASM'in yazdığı her satır doğrudan protokol kanalına düşüyor.
+     * instance.ts bunu stderr'e çeviriyor; burada da kanalın gerçekten temiz
+     * olduğu YAYINLANMIŞ düzende doğrulanıyor. Kirlenirse belirti "sunucu
+     * bağlanamadı" olur ve sebebi hiçbir yerde yazmaz.
+     */
+    r.check('stdout yalnızca JSON-RPC taşıyor', strayLines.length === 0,
+      strayLines.length === 0 ? 'protokol dışı satır yok'
+        : `${strayLines.length} protokol dışı satır: ${strayLines[0].slice(0, 60)}`);
+
+    /*
+     * --- bin gerçekten var mı ve bir insanla konuşabiliyor mu ---
+     *
+     * `bin` hedefi tarball'da yoksa `npx @kuntay/swisseph-mcp` kurulum anında
+     * düşer — istemci "sunucu başlatılamadı" der ve model aracı hiç görmez.
+     *
+     * `--version` de burada sınanıyor çünkü bir zamanlar argv tamamen yok
+     * sayılıyordu: kurulumunu denetlemek için onu yazan kişi hiçbir çıktı
+     * almadan asılı kalan bir sunucu görüyordu. Sağlıklı bir sunucunun bozuk
+     * görünmesinin en kısa yolu buydu.
+     */
+    const binTarget = typeof manifest.bin === 'string'
+      ? manifest.bin : Object.values(manifest.bin ?? {})[0];
+    const binPath = binTarget ? join(mcpRoot, binTarget) : null;
+    r.check('bin hedefi tarball içinde', Boolean(binPath && existsSync(binPath)),
+      binTarget ?? 'package.json içinde bin yok');
+
+    if (binPath && existsSync(binPath)) {
+      const probe = spawnSync(process.execPath, [binPath, '--version'], {
+        input: '', encoding: 'utf8', timeout: 60_000,
+      });
+      r.check('--version sunucuyu başlatmadan çıkıyor',
+        probe.status === 0 && (probe.stdout ?? '').trim() === expected,
+        `çıkış ${probe.status}, stdout ${JSON.stringify((probe.stdout ?? '').trim())}`);
+    }
   }
 } finally {
   rmSync(work, { recursive: true, force: true });

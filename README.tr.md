@@ -142,9 +142,22 @@ hatırlanarak varılacak bir şey değil.
 [Model Context Protocol](https://modelcontextprotocol.io) sunucusu olarak açıyor;
 model sayıları uydurmak yerine dışarı sorup alıyor.
 
+Tek komut, makinede bulduğu her MCP istemcisine — her birinin istediği açılış
+satırıyla — kaydı yazıyor:
+
 ```bash
-claude mcp add swisseph -- npx -y @kuntay/swisseph-mcp
+npx -y @kuntay/swisseph-mcp install
 ```
+
+`npx -y @kuntay/swisseph-mcp doctor` neyi bulduğunu ve ne yazacağını söylüyor;
+`... config` elle yapıştırılacak bloğu basıyor.
+
+Windows'ta `"command": "npx"` ÇALIŞMIYOR — istemcilerin çoğu komutu kabuk
+olmadan başlatıyor ve ortada `npx` diye bir çalıştırılabilir yok, `npx.cmd`
+var; onu yazmak da kurtarmıyor, çünkü Node BatBadBut düzeltmesinden
+(CVE-2024-27980) beri `.cmd`/`.bat` dosyalarını kabuksuz başlatmayı
+reddediyor. Doğru biçim `cmd` + `["/c", "npx", …]`. Ayrıntı ve ölçüm:
+[packages/mcp/README.md](packages/mcp/README.md).
 
 Sekiz araç: `natal_chart`, `transits`, `synastry`, `return_chart`, `eclipses`,
 `rise_set`, `time_lords`, `declinations`.

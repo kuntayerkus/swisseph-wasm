@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "swisseph": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["./packages/mcp/dist/index.js"],
+      "env": {}
+    }
+  }
+}

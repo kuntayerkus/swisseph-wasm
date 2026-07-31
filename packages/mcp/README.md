@@ -27,11 +27,32 @@ hands back finished text.
 
 ## Install
 
+Nothing to install first — the command below fetches the package and writes
+the right entry into every MCP client it finds on the machine:
+
 ```bash
-npm install -g @kuntay/swisseph-mcp
+npx -y @kuntay/swisseph-mcp install
 ```
 
-**Claude Desktop** — add to `claude_desktop_config.json`:
+Restart the client afterwards; most read their config only at startup. Then
+ask in plain language: *"Cast a chart for 15 May 1990, 17:30, Ankara."*
+
+Two companion commands:
+
+```bash
+npx -y @kuntay/swisseph-mcp doctor   # what is installed here, and is it working
+npx -y @kuntay/swisseph-mcp config   # print the blocks, write nothing
+```
+
+`install` never overwrites a config it cannot parse, keeps a `.bak` of
+anything it changes, and does nothing the second time you run it. Add
+`--dry-run` to see the plan first, or name one client:
+`install claude-desktop`.
+
+### Configuring it by hand
+
+<details>
+<summary>macOS and Linux</summary>
 
 ```json
 {
@@ -43,14 +64,64 @@ npm install -g @kuntay/swisseph-mcp
   }
 }
 ```
+</details>
 
-**Claude Code:**
+<details>
+<summary>Windows — the <code>npx</code> form above does not work</summary>
 
-```bash
-claude mcp add swisseph -- npx -y @kuntay/swisseph-mcp
+```json
+{
+  "mcpServers": {
+    "swisseph": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@kuntay/swisseph-mcp"]
+    }
+  }
+}
 ```
 
-Then ask in plain language: *"Cast a chart for 15 May 1990, 17:30, Ankara."*
+Most clients spawn the command directly, without a shell, and on Windows
+there is no `npx` to spawn — only `npx.cmd`. Naming that instead does not
+help: since the BatBadBut fix (CVE-2024-27980) Node refuses to spawn a
+`.cmd` or `.bat` without a shell. Measured on Node 24.12 / Windows 11:
+
+| `"command"` | result |
+|---|---|
+| `npx` | `ENOENT` |
+| `npx.cmd` | `EINVAL` |
+| `cmd` with `["/c", "npx", …]` | works |
+
+The client reports this as a server that failed to start, which reads as a
+broken server rather than a wrong line — and the model, finding no tool,
+quietly answers from memory instead. The `cmd /c` form also works in clients
+that *do* use a shell, so on Windows it is simply the correct form.
+</details>
+
+Where the file lives, and what the map is called:
+
+| Client | File | Key |
+|---|---|---|
+| Claude Desktop | `%APPDATA%\Claude\claude_desktop_config.json` · `~/Library/Application Support/Claude/…` · `~/.config/Claude/…` | `mcpServers` |
+| Claude Code | `claude mcp add swisseph --scope user -- …`, or a `.mcp.json` in the project | `mcpServers` |
+| Cursor | `~/.cursor/mcp.json` | `mcpServers` |
+| VS Code (Copilot) | `%APPDATA%\Code\User\mcp.json` · `~/Library/Application Support/Code/User/mcp.json` · `~/.config/Code/User/mcp.json` | **`servers`** |
+| Windsurf | `~/.codeium/windsurf/mcp_config.json` | `mcpServers` |
+| Gemini CLI | `~/.gemini/settings.json` | `mcpServers` |
+| Codex CLI | `~/.codex/config.toml` | `[mcp_servers.swisseph]` |
+
+Anything else that speaks MCP over stdio works too — the server is a plain
+stdio process with no options and no environment beyond the optional
+`SWISSEPH_EPHE_PATH`.
+
+### When it is not showing up
+
+Run `npx -y @kuntay/swisseph-mcp doctor`. It checks the Node version, loads
+the WebAssembly and computes one position with it, reports which ephemeris it
+found, prints the launch line for the platform you are on, and lists which
+client configs exist and which already have the entry.
+
+Requires Node 20 or newer. Older versions are refused at startup with a
+message saying so, rather than failing somewhere in a dependency.
 
 ## Full precision
 
@@ -58,13 +129,14 @@ The server works with no data files, using Swiss Ephemeris's built-in Moshier
 theory — accurate to about a quarter of an arcsecond for the outer planets and
 under 0.07″ for the Sun. That is far finer than any birth time is known.
 
-For the full JPL DE441-derived ephemeris, either install the data package:
+For the full JPL DE441-derived ephemeris there are two routes, and which one
+you can use depends on how the server is launched.
 
-```bash
-npm install @kuntay/swisseph-data
-```
-
-or point the server at a directory of `.se1` files:
+**With `npx`, use `SWISSEPH_EPHE_PATH`.** `npx` runs the package out of its own
+cache directory, where a data package installed anywhere else is not on the
+resolution path — so installing `@kuntay/swisseph-data` has no effect on an
+npx-launched server. Point it at a directory of `.se1` files instead. `env`
+sits beside `command` and `args`, whichever launch line your platform needs:
 
 ```json
 {
@@ -78,8 +150,34 @@ or point the server at a directory of `.se1` files:
 }
 ```
 
+**Installed rather than npx'd, the data package is found on its own.** Install
+the two together so they end up as siblings in one `node_modules`, then point
+the client at the installed binary instead of `npx`:
+
+```bash
+npm install -g @kuntay/swisseph-mcp @kuntay/swisseph-data
+```
+
+```json
+{
+  "mcpServers": {
+    "swisseph": { "command": "swisseph-mcp", "args": [] }
+  }
+}
+```
+
+Verified: with both packages side by side the server reports *full ephemeris
+(@kuntay/swisseph-data)* at startup; installed apart, it does not. On Windows
+a global bin is a `.cmd` shim, so the same `cmd /c` wrapper applies —
+`"command": "cmd", "args": ["/c", "swisseph-mcp"]`.
+
 Every answer states which was used. A path that does not exist is reported
-rather than silently ignored.
+rather than silently ignored, and `doctor` prints which one is in force.
+
+Without the data files, Chiron and the other asteroids are reported as
+unavailable — with an explanation of what to install, and an instruction not
+to substitute a value. The planets, angles, houses, aspects, dignities and
+lots are all unaffected: those come from Moshier and are complete.
 
 ## Tools
 

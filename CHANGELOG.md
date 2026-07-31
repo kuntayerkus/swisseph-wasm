@@ -7,6 +7,89 @@ All notable changes to this project are documented here. The format follows
 Note that the vendored Swiss Ephemeris version (`2.10.03`) is independent of
 this package's version; upstream changes are called out explicitly.
 
+## [0.2.1] — 2026-07-31
+
+Reaching the MCP server, rather than what it computes once reached. Every
+defect here has the same symptom: the tool is not there, so the model answers
+from memory instead — which is the one thing this server exists to prevent.
+None of them are visible from inside a working setup, which is why they
+survived a release.
+
+### Fixed
+
+- **The documented Windows configuration could not start.** Every client
+  config in the README used `"command": "npx"`, and most clients spawn the
+  command without a shell. On Windows there is no `npx` executable to spawn
+  — only `npx.cmd` — and naming that instead does not help either, because
+  Node has refused to spawn `.cmd` and `.bat` without a shell since the
+  BatBadBut fix (CVE-2024-27980). Measured on Node 24.12 / Windows 11:
+  `npx` → `ENOENT`, `npx.cmd` → `EINVAL`, `cmd` with `["/c", "npx", …]` →
+  works. The client reports this as a server that failed to start, which
+  reads as a broken server rather than a wrong line. The `cmd /c` form also
+  works in clients that *do* use a shell, so on Windows it is not a
+  preference.
+- **The published server reported version `0.1.0` after `0.2.0` shipped.**
+  `serverInfo` is the only place a client sees a version, so a bug report
+  would have named the wrong one while the release itself was fine. Read from
+  `package.json` now, and `check-pack` runs a real handshake against the
+  unpacked tarball so a stale string cannot ship again.
+- **A missing data file told the model to write code.** The core library's
+  error is correct for a developer holding the API — *"Load it with
+  `mountEphemeris({ 'seas_18.se1': bytes })`"* — and is an instruction to go
+  around the tool when the reader is a language model holding nothing else.
+  The MCP layer now translates it: what the operator should install, and an
+  explicit instruction not to substitute a position for the missing body.
+- **`--version` and `--help` started the server and hung.** argv was ignored
+  outright, so the first thing anyone types to check an installation produced
+  no output and waited on stdin. A healthy server, indistinguishable from a
+  broken one.
+- **WebAssembly output could corrupt the protocol.** The Emscripten glue binds
+  stdout to `console.log`, and for an MCP server stdout *is* the transport —
+  one stray line breaks the JSON-RPC stream and the client drops the server
+  with nothing logged anywhere. Every `printf` in the compiled C is currently
+  dead code, so nothing was leaking; the module's output is now routed to
+  stderr regardless, and both the test suite and `check-pack` assert that the
+  channel carries JSON-RPC and nothing else.
+- Node older than 20 is refused at startup with a sentence naming both the
+  running version and the requirement. `engines` is advisory — npm warns and
+  runs it anyway, npx does not even warn — so what the user saw was a failure
+  from inside a dependency.
+
+### Added
+
+- **`swisseph-mcp install`** — writes the correct entry into every MCP client
+  config found on the machine, with the launch line that platform needs. It
+  never overwrites a file it cannot parse (VS Code's `mcp.json` permits
+  comments, and replacing a config full of other servers would be the worst
+  thing this command could do), keeps a `.bak` of anything it changes, and is
+  a no-op the second time. `--dry-run` shows the plan. Claude Desktop, Claude
+  Code, Cursor, VS Code, Windsurf, Gemini CLI and Codex CLI are known by name.
+- **`swisseph-mcp doctor`** — checks the Node version, loads the WebAssembly
+  and computes a position with it, reports which ephemeris was found, prints
+  the launch line for the current platform, and lists which client configs
+  exist and which already have the entry.
+- **`swisseph-mcp config`** — prints the blocks without writing anything.
+- A `.mcp.json` in the repository, so a checkout is wired up on open.
+- The MCP header now echoes each coordinate in **both** notations —
+  `40.1800°N (40°10'48")`. The API takes decimal degrees, but `40.18` is read
+  as 40°18′ by most people writing a birth place down, and the two are 12
+  arcminutes apart. Neither reading is detectable from the number, so nothing
+  is guessed; printing the interpretation that was applied makes a mistyped
+  coordinate visible instead of leaving it to surface as an argument with
+  another program. Measured on a real chart: the two readings of one
+  coordinate pair moved the Ascendant by 35′.
+
+### Changed
+
+- The package's `bin` is now `dist/cli.js`. `dist/index.js` remains the server
+  and the package's main export; importing it still starts serving.
+- The README states plainly that `@kuntay/swisseph-data` is **not** picked up
+  by an npx-launched server — npx runs out of its own cache directory, where a
+  data package installed elsewhere is not on the resolution path. Verified in
+  both layouts: installed as siblings the server reports *full ephemeris
+  (@kuntay/swisseph-data)*; under npx it reports Moshier. Use
+  `SWISSEPH_EPHE_PATH` with npx, or install both packages together.
+
 ## [0.2.0] — 2026-07-31
 
 An audit of the house, angle, aspect and lot code. The Arabic lot formulae and
