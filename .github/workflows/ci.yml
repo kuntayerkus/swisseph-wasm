@@ -8,17 +8,32 @@ on:
 
 jobs:
   build:
-    name: Build and verify
-    runs-on: ubuntu-latest
-
-    # Yerel geliştirmede tools/build-wasm.mjs bu imajı Docker üzerinden
-    # çağırıyor. CI'da doğrudan konteyner içinde çalışarak aynı emcc
-    # sürümünü kullanıyoruz — build çıktısı iki ortamda da özdeş olsun.
-    container:
-      image: emscripten/emsdk:latest
+    name: Build and verify (${{ matrix.os }})
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+      fail-fast: false
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v7
+
+      # Docker konteynerı yalnızca Linux'ta kullanılıyor.
+      # Windows ve macOS'ta emsdk manuel kurulacak.
+      - name: Set up Emscripten (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        uses: addnab/docker-run-action@v3
+        with:
+          image: emscripten/emsdk:latest
+          options: -v ${{ github.workspace }}:/workspace --workdir /workspace
+          run: echo "Docker setup complete"
+
+      - name: Set up Emscripten (non-Linux)
+        if: matrix.os != 'ubuntu-latest'
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: latest
+          no-cache: true
 
       - name: Set up Node
         uses: actions/setup-node@v7

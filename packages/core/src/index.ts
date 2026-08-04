@@ -26,6 +26,24 @@
 export { createSwissEph, type ReturnResult, type SwissEph } from './instance.js';
 
 export {
+  NatalChartBuilder,
+  TransitChartBuilder,
+  type NatalChart,
+  type NatalChartConfig,
+  type ChartDate,
+  type TransitChart,
+  type TransitChartConfig,
+  type TransitAspect,
+} from './derived/chart-builder.js';
+
+export {
+  LRUCache,
+  memoize,
+  createCachedFunction,
+  type CacheConfig,
+} from './cache/lru-cache.js';
+
+export {
   ASCMC,
   AsteroidOffset,
   Ayanamsa,
@@ -234,6 +252,9 @@ export {
 
 export {
   SwissEphError,
+  ErrorCode,
+  getErrorSuggestion,
+  type ErrorSuggestion,
   type CalcOptions,
   type CalendarDate,
   type EphemerisModel,
@@ -246,6 +267,11 @@ export {
   type StarPosition,
   type SwissEphOptions,
 } from './types.js';
+
+export {
+  SwissEphWorker,
+  type SwissEphWorkerOptions,
+} from './worker/index.js';
 
 /**
  * File names in the full-precision data package (1800–2399 CE, 2.05 MB).

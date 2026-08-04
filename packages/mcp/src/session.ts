@@ -13,6 +13,7 @@ import { createRequire } from 'node:module';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { createSwissEph, type SwissEph } from '@kuntay/swisseph';
+import { createMcpRateLimiter, type RateLimiter } from './rate-limiter.js';
 
 export interface EphemerisStatus {
   /** Where the data came from, for the caller to see. */
@@ -77,6 +78,9 @@ function locateEphemeris(): { directory: string | null; status: EphemerisStatus 
 const located = locateEphemeris();
 
 export const ephemerisStatus: EphemerisStatus = located.status;
+
+/** Global rate limiter instance for the MCP server */
+export const rateLimiter: RateLimiter = createMcpRateLimiter();
 
 /**
  * Runs `work` against a fresh instance and disposes it afterwards.
