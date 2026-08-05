@@ -33,6 +33,125 @@ export {
 } from './generated/constants.js';
 
 /**
+ * House system codes as string literal types.
+ * Provides compile-time validation for house system selection.
+ */
+export type HouseSystemCode = 
+  | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' | 'G' | 'H' | 'I' | 'J' | 'K' | 'L' | 'M' 
+  | 'N' | 'O' | 'P' | 'Q' | 'R' | 'S' | 'T' | 'U' | 'V' | 'W' | 'X' | 'Y' | 'Z'
+  | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'g' | 'h' | 'i' | 'j' | 'k' | 'l' | 'm'
+  | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z';
+
+/**
+ * Aspect indices as typed constants.
+ * Each aspect has a specific orb and meaning in astrological interpretation.
+ */
+export const AspectIndex = {
+  Conjunction: 0,
+  Opposition: 1,
+  Trine: 2,
+  Square: 3,
+  Sextile: 4,
+  Quincunx: 5,
+  SemiSquare: 6,
+  Sesquiquadrate: 7,
+  SemiSextile: 8,
+  Quintile: 9,
+  BiQuintile: 10,
+} as const;
+
+export type AspectIndex = (typeof AspectIndex)[keyof typeof AspectIndex];
+
+/**
+ * Sign names in order (Aries through Pisces).
+ * Use for display and localization purposes.
+ */
+export const SIGNS = [
+  'Aries',
+  'Taurus',
+  'Gemini',
+  'Cancer',
+  'Leo',
+  'Virgo',
+  'Libra',
+  'Scorpio',
+  'Sagittarius',
+  'Capricorn',
+  'Aquarius',
+  'Pisces',
+] as const;
+
+export type Sign = (typeof SIGNS)[number];
+
+/**
+ * Element types for signs.
+ * Fire, Earth, Air, Water triplicities.
+ */
+export type Element = 'Fire' | 'Earth' | 'Air' | 'Water';
+
+/**
+ * Modality types for signs.
+ * Cardinal, Fixed, Mutable qualities.
+ */
+export type Modality = 'Cardinal' | 'Fixed' | 'Mutable';
+
+/**
+ * Map of signs to their elements.
+ */
+export const SIGN_ELEMENTS: Record<Sign, Element> = {
+  'Aries': 'Fire',
+  'Taurus': 'Earth',
+  'Gemini': 'Air',
+  'Cancer': 'Water',
+  'Leo': 'Fire',
+  'Virgo': 'Earth',
+  'Libra': 'Air',
+  'Scorpio': 'Water',
+  'Sagittarius': 'Fire',
+  'Capricorn': 'Earth',
+  'Aquarius': 'Air',
+  'Pisces': 'Water',
+};
+
+/**
+ * Map of signs to their modalities.
+ */
+export const SIGN_MODALITIES: Record<Sign, Modality> = {
+  'Aries': 'Cardinal',
+  'Taurus': 'Fixed',
+  'Gemini': 'Mutable',
+  'Cancer': 'Cardinal',
+  'Leo': 'Fixed',
+  'Virgo': 'Mutable',
+  'Libra': 'Cardinal',
+  'Scorpio': 'Fixed',
+  'Sagittarius': 'Mutable',
+  'Capricorn': 'Cardinal',
+  'Aquarius': 'Fixed',
+  'Pisces': 'Mutable',
+};
+
+/**
+ * Polarities: which signs are diurnal (positive) vs nocturnal (negative).
+ */
+export type Polarity = 'Diurnal' | 'Nocturnal';
+
+export const SIGN_POLARITIES: Record<Sign, Polarity> = {
+  'Aries': 'Diurnal',
+  'Taurus': 'Nocturnal',
+  'Gemini': 'Diurnal',
+  'Cancer': 'Nocturnal',
+  'Leo': 'Diurnal',
+  'Virgo': 'Nocturnal',
+  'Libra': 'Diurnal',
+  'Scorpio': 'Nocturnal',
+  'Sagittarius': 'Diurnal',
+  'Capricorn': 'Nocturnal',
+  'Aquarius': 'Diurnal',
+  'Pisces': 'Nocturnal',
+};
+
+/**
  * Celestial bodies.
  *
  * "Lilith" names three different things in astrology and they are constantly
@@ -164,10 +283,4 @@ export const ASCMC = {
   Count: 8,
 } as const;
 
-/** The zodiac signs, 0 = Aries. Obtained by dividing longitude by 30. */
-export const SIGNS = [
-  'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
-  'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
-] as const;
-
-export type Sign = (typeof SIGNS)[number];
+// SIGNS and Sign type already defined above (lines 69-84)

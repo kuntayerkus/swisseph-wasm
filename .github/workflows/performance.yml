@@ -1,0 +1,82 @@
+name: Performance Benchmark
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    name: Run performance benchmarks
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: Create benchmark script
+        run: |
+          cat > benchmark.mjs << 'SCRIPT'
+          import { swe } from './packages/core/dist/index.js';
+          import { hrtime } from 'node:process';
+
+          const iterations = 1000;
+          const jd = 2451545.0; // J2000.0
+
+          // Warmup
+          for (let i = 0; i < 10; i++) {
+            swe.calc(jd, 0);
+          }
+
+          // Benchmark
+          const start = hrtime.bigint();
+          for (let i = 0; i < iterations; i++) {
+            swe.calc(jd + (i * 0.001), 0);
+          }
+          const end = hrtime.bigint();
+
+          const durationMs = Number(end - start) / 1e6;
+          const avgMs = durationMs / iterations;
+          const opsPerSec = iterations / (durationMs / 1000);
+
+          console.log(JSON.stringify({
+            iterations,
+            durationMs: durationMs.toFixed(2),
+            avgMsPerCall: avgMs.toFixed(4),
+            operationsPerSecond: opsPerSec.toFixed(2),
+            timestamp: new Date().toISOString()
+          }, null, 2));
+          SCRIPT
+
+      - name: Run benchmark
+        run: node benchmark.mjs | tee benchmark-results.json
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v7
+        with:
+          name: benchmark-results
+          path: benchmark-results.json
+          retention-days: 30
+
+      # Optional: Compare with previous results
+      # - name: Download previous results
+      #   uses: dawiddown/action-download-artifact@v3
+      #   if: github.event_name == 'pull_request'
+      #   with:
+      #     workflow: performance.yml
+      #     branch: ${{ github.base_ref }}
+      #     name: benchmark-results
+
+      # - name: Compare results
+      #   run: |
+      #     node tools/compare-benchmarks.mjs

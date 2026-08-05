@@ -1,0 +1,52 @@
+name: Code Coverage
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    name: Generate and verify coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install vitest coverage dependencies
+        run: npm install -D @vitest/coverage-v8
+
+      - name: Build project
+        run: npm run build
+
+      - name: Run tests with coverage
+        run: npx vitest run --coverage
+
+      - name: Upload coverage reports to GitHub Actions
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 30
+
+      # Optional: Upload to Coveralls or Codecov
+      # - name: Upload to Coveralls
+      #   uses: coverallsapp/github-action@v2
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     path-to-lcov: ./coverage/lcov.info
+
+      # - name: Upload to Codecov
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     files: ./coverage/lcov.info
+      #     fail_ci_if_error: false
