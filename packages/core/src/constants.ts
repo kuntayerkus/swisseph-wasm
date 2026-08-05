@@ -43,6 +43,103 @@ export type HouseSystemCode =
   | 'n' | 'o' | 'p' | 'q' | 'r' | 's' | 't' | 'u' | 'v' | 'w' | 'x' | 'y' | 'z';
 
 /**
+ * Aspect types as string literal types.
+ * Provides compile-time validation for aspect selection.
+ */
+export type AspectKind = 
+  | 'Conjunction'
+  | 'Opposition'
+  | 'Trine'
+  | 'Square'
+  | 'Sextile'
+  | 'Quincunx'
+  | 'SemiSquare'
+  | 'Sesquiquadrate'
+  | 'SemiSextile'
+  | 'Quintile'
+  | 'BiQuintile';
+
+/**
+ * Declination aspect types as string literal types.
+ */
+export type DeclinationAspectKind = 
+  | 'Parallel'
+  | 'ContraParallel'
+  | 'Contra-Parallel';
+
+/**
+ * Element types as string literal types.
+ */
+export type ElementType = 'Fire' | 'Earth' | 'Air' | 'Water';
+
+/**
+ * Modality types as string literal types.
+ */
+export type ModalityType = 'Cardinal' | 'Fixed' | 'Mutable';
+
+/**
+ * Polarity types as string literal types.
+ */
+export type PolarityType = 'Diurnal' | 'Nocturnal' | 'Positive' | 'Negative';
+
+/**
+ * Ruling planet names as string literal types.
+ */
+export type RulingPlanet = 
+  | 'Sun'
+  | 'Moon'
+  | 'Mercury'
+  | 'Venus'
+  | 'Mars'
+  | 'Jupiter'
+  | 'Saturn'
+  | 'Uranus'
+  | 'Neptune'
+  | 'Pluto';
+
+/**
+ * Dignity types as string literal types.
+ */
+export type DignityType = 
+  | 'Domicile'
+  | 'Exaltation'
+  | 'Detriment'
+  | 'Fall'
+  | 'MinorDomicile'
+  | 'Triplicity'
+  | 'Term'
+  | 'Face'
+  | 'Decan';
+
+/**
+ * Ephemeris model as string literal types.
+ */
+export type EphemerisModelType = 'swiss' | 'moshier' | 'jpl';
+
+/**
+ * Calendar type as string literal types.
+ */
+export type CalendarType = 'Gregorian' | 'Julian';
+
+/**
+ * Eclipse type as string literal types.
+ */
+export type EclipseType = 'Solar' | 'Lunar' | 'Partial' | 'Total' | 'Annular' | 'Hybrid';
+
+/**
+ * Lunar phase names as string literal types.
+ */
+export type LunarPhase = 
+  | 'New Moon'
+  | 'Waxing Crescent'
+  | 'First Quarter'
+  | 'Waxing Gibbous'
+  | 'Full Moon'
+  | 'Waning Gibbous'
+  | 'Last Quarter'
+  | 'Waning Crescent';
+
+/**
  * Aspect indices as typed constants.
  * Each aspect has a specific orb and meaning in astrological interpretation.
  */

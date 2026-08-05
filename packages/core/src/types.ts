@@ -1,7 +1,20 @@
-import type { Sign } from './constants.js';
+import type { 
+  Sign, 
+  EphemerisModelType, 
+  AspectKind, 
+  DeclinationAspectKind,
+  ElementType,
+  ModalityType,
+  PolarityType,
+  RulingPlanet,
+  DignityType,
+  CalendarType,
+  EclipseType,
+  LunarPhase,
+} from './constants.js';
 
 /** The ephemeris that actually produced a result. */
-export type EphemerisModel = 'swiss' | 'moshier' | 'jpl';
+export type EphemerisModel = EphemerisModelType;
 
 /** A body's position. */
 export interface Position {

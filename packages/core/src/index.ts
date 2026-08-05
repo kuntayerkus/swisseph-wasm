@@ -63,6 +63,18 @@ export {
   RiseTransit,
   SIGNS,
   type Sign,
+  type HouseSystemCode,
+  type AspectKind,
+  type DeclinationAspectKind,
+  type ElementType,
+  type ModalityType,
+  type PolarityType,
+  type RulingPlanet,
+  type DignityType,
+  type EphemerisModelType,
+  type CalendarType,
+  type EclipseType,
+  type LunarPhase,
 } from './constants.js';
 
 export {
