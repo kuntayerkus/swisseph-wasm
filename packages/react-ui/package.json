@@ -22,7 +22,7 @@
     "dev": "tsup src/index.ts --format esm,cjs --dts --watch"
   },
   "peerDependencies": {
-    "@kuntay/swisseph": "^0.3.0",
+    "@kuntay/swisseph": "^0.2.2 || ^0.3.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
