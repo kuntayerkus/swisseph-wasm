@@ -9,6 +9,7 @@
  * Gruplandırmalar YALNIZCA kaynaklandırılabilir olanlar:
  *   royal     — Pers geleneğinin dört Bekçisi
  *   behenian  — Agrippa'nın 15 ortaçağ yıldızı
+ *   nakshatra — 27 nakshatranın bağlantı (yogatāra) yıldızları
  *   bright    — kadir < 2.0, katalogdan nesnel olarak seçilir
  *
  * "Tıbbi", "psikolojik", "karmik" gibi gruplar KASTEN yok: bunların
@@ -54,6 +55,50 @@ const BEHENIAN = [
   'Algol', 'Alcyone', 'Aldebaran', 'Capella', 'Sirius', 'Procyon',
   'Regulus', 'Alkaid', 'Algorab', 'Spica', 'Arcturus', 'Alphecca',
   'Antares', 'Vega', 'Deneb Algedi',
+];
+
+/*
+ * 27 nakshatranın bağlantı (yogatāra) yıldızları — Sūrya Siddhānta'nın
+ * liste düzeninde (Burgess 1860 çevirisi, ch. 8; asterism üyelikleri
+ * Basham 1954, Appendix II). Ad SEÇİMİ ve üç istisna gerekçesiyle
+ * docs/NAKSHATRA-STARS.md'ye bakın: Bharaṇī Burgess'te 35 Arietis'tir ama
+ * katalogda yoktur — üçgenin en parlağı 41 Arietis kullanılıyor; Viśākhā
+ * için alLib değil al-2Lib çözümleniyor; Uttara Āṣāḍhā'nın sigma'sı bu
+ * katalogda siSgr koduyla kayıtlı.
+ *
+ * Eşleşme GELENEKSEL ADLA değil ADLANDIRMAYLA yapılıyor: bağlantı
+ * yıldızlarının bir kısmı katalogda adsız (epHya, laAqr, zePsc, 41Ari
+ * dışındaki Flamsteed'ler). Konumlar zaten katalogdan geliyor; burası
+ * yalnızca "hangi yıldız hangi nakshatrayı tanımlar" kürasyonu.
+ */
+const NAKSHATRA_JUNCTIONS = [
+  ['Aśvinī', 'beAri'],
+  ['Bharaṇī', '41Ari'],
+  ['Kṛttikā', 'etTau'],
+  ['Rohiṇī', 'alTau'],
+  ['Mṛgaśira', 'laOri'],
+  ['Ārdrā', 'alOri'],
+  ['Punarvasū', 'beGem'],
+  ['Puṣya', 'gaCnc'],
+  ['Āśleṣā', 'epHya'],
+  ['Maghā', 'alLeo'],
+  ['Pūrva Phalgunī', 'deLeo'],
+  ['Uttara Phalgunī', 'beLeo'],
+  ['Hasta', 'deCrv'],
+  ['Citrā', 'alVir'],
+  ['Svātī', 'alBoo'],
+  ['Viśākhā', 'al-2Lib'],
+  ['Anurādhā', 'deSco'],
+  ['Jyeṣṭhā', 'alSco'],
+  ['Mūla', 'laSco'],
+  ['Pūrva Āṣāḍhā', 'deSgr'],
+  ['Uttara Āṣāḍhā', 'siSgr'],
+  ['Śravaṇa', 'alAql'],
+  ['Dhaniṣṭhā', 'beDel'],
+  ['Śatabhiṣā', 'laAqr'],
+  ['Pūrva Bhādrapadā', 'alPeg'],
+  ['Uttara Bhādrapadā', 'gaPeg'],
+  ['Revatī', 'zePsc'],
 ];
 
 /** Astrolojik yazında sık geçen diğer yıldızlar. */
@@ -129,9 +174,26 @@ function add(name, group, meaning) {
   stars.set(record.designation, { ...record, groups: [group], meaning });
 }
 
+/** Adlandırma üzerinden eşleme — katalogda adsız yıldızlar için. */
+function addByDesignation(designation, group, nakshatra) {
+  const record = byDesignation.get(designation);
+  if (!record) { missing.push(`${designation} (${group})`); return; }
+
+  const existing = stars.get(record.designation);
+  if (existing) {
+    if (!existing.groups.includes(group)) existing.groups.push(group);
+    if (nakshatra) existing.nakshatra = nakshatra;
+    return;
+  }
+  stars.set(record.designation, { ...record, groups: [group], nakshatra });
+}
+
 for (const [name, meaning] of ROYAL) add(name, 'royal', meaning);
 for (const name of BEHENIAN) add(name, 'behenian');
 for (const name of NOTABLE) add(name, 'notable');
+for (const [nakshatra, designation] of NAKSHATRA_JUNCTIONS) {
+  addByDesignation(designation, 'nakshatra', nakshatra);
+}
 
 // 'bright' grubu katalogdan nesnel olarak: elle liste yok.
 for (const record of byDesignation.values()) {
@@ -173,7 +235,7 @@ const body = `/**
 /* eslint-disable */
 
 /** Bir yıldızın ait olduğu kürasyon grubu. */
-export type StarGroup = 'royal' | 'behenian' | 'notable' | 'bright';
+export type StarGroup = 'royal' | 'behenian' | 'notable' | 'nakshatra' | 'bright';
 
 export interface CuratedStar {
   /** Katalogdaki geleneksel ad. */
@@ -191,6 +253,11 @@ export interface CuratedStar {
   groups: StarGroup[];
   /** Geleneksel anlam — yalnızca kaynaklandırılabilir olanlarda. */
   meaning?: string;
+  /**
+   * Bu yıldızın tanımladığı nakshatra (yogatāra) — yalnızca 'nakshatra'
+   * grubunda. Kaynak: Sūrya Siddhānta; ayrıntı docs/NAKSHATRA-STARS.md.
+   */
+  nakshatra?: string;
 }
 
 /** Kürasyonlu yıldızların tamamı, kadire göre sıralı (parlaktan sönüğe). */
@@ -198,7 +265,8 @@ export const CURATED_STARS: readonly CuratedStar[] = [
 ${sorted.map((s) =>
   `  { name: ${esc(s.traditional)}, designation: ${esc(s.designation)}, ` +
   `magnitude: ${s.magnitude}, groups: [${s.groups.map(esc).join(', ')}]` +
-  (s.meaning ? `, meaning: ${esc(s.meaning)}` : '') + ' },',
+  (s.meaning ? `, meaning: ${esc(s.meaning)}` : '') +
+  (s.nakshatra ? `, nakshatra: ${esc(s.nakshatra)}` : '') + ' },',
 ).join('\n')}
 ];
 
@@ -207,6 +275,7 @@ export const STAR_GROUP_COUNTS: Readonly<Record<StarGroup, number>> = {
   royal: ${counts.royal ?? 0},
   behenian: ${counts.behenian ?? 0},
   notable: ${counts.notable ?? 0},
+  nakshatra: ${counts.nakshatra ?? 0},
   bright: ${counts.bright ?? 0},
 };
 

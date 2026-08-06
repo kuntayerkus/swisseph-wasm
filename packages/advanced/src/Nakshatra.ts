@@ -38,6 +38,64 @@ export interface NakshatraResult {
 }
 
 /**
+ * Junction star (yogatāra) per nakshatra — the star each nakshatra is
+ * defined by. Keyed by nakshatra id (1-27) so the mapping stays valid
+ * regardless of name transliteration.
+ *
+ * Source: Sūrya Siddhānta junction-star table (Burgess 1860, ch. 8),
+ * asterism membership via Basham (1954); the three judgment calls
+ * (Bharaṇī → 41 Arietis, Viśākhā → al-2Lib, Uttara Āṣāḍhā → siSgr) are
+ * documented in docs/NAKSHATRA-STARS.md. Positions are NOT stored here:
+ * resolve `designation` through @kuntay/swisseph's `fixedStar()` +
+ * `byDesignation()` at runtime — the catalogue (sefstars.txt) is the
+ * source of coordinates, never a hand-typed table. The same list ships
+ * in core as `NAKSHATRA_JUNCTION_STARS`.
+ */
+export interface NakshatraJunctionStar {
+  /** Nakshatra id, 1-27, matching NAKSHATRAS entries. */
+  id: number;
+  /** sefstars.txt designation for byDesignation() lookup. */
+  designation: string;
+  /** IAST nakshatra name, as in docs/NAKSHATRA-STARS.md. */
+  nakshatra: string;
+}
+
+export const NAKSHATRA_JUNCTION_STARS: readonly NakshatraJunctionStar[] = [
+  { id: 1, designation: 'beAri', nakshatra: 'Aśvinī' },
+  { id: 2, designation: '41Ari', nakshatra: 'Bharaṇī' },
+  { id: 3, designation: 'etTau', nakshatra: 'Kṛttikā' },
+  { id: 4, designation: 'alTau', nakshatra: 'Rohiṇī' },
+  { id: 5, designation: 'laOri', nakshatra: 'Mṛgaśira' },
+  { id: 6, designation: 'alOri', nakshatra: 'Ārdrā' },
+  { id: 7, designation: 'beGem', nakshatra: 'Punarvasū' },
+  { id: 8, designation: 'gaCnc', nakshatra: 'Puṣya' },
+  { id: 9, designation: 'epHya', nakshatra: 'Āśleṣā' },
+  { id: 10, designation: 'alLeo', nakshatra: 'Maghā' },
+  { id: 11, designation: 'deLeo', nakshatra: 'Pūrva Phalgunī' },
+  { id: 12, designation: 'beLeo', nakshatra: 'Uttara Phalgunī' },
+  { id: 13, designation: 'deCrv', nakshatra: 'Hasta' },
+  { id: 14, designation: 'alVir', nakshatra: 'Citrā' },
+  { id: 15, designation: 'alBoo', nakshatra: 'Svātī' },
+  { id: 16, designation: 'al-2Lib', nakshatra: 'Viśākhā' },
+  { id: 17, designation: 'deSco', nakshatra: 'Anurādhā' },
+  { id: 18, designation: 'alSco', nakshatra: 'Jyeṣṭhā' },
+  { id: 19, designation: 'laSco', nakshatra: 'Mūla' },
+  { id: 20, designation: 'deSgr', nakshatra: 'Pūrva Āṣāḍhā' },
+  { id: 21, designation: 'siSgr', nakshatra: 'Uttara Āṣāḍhā' },
+  { id: 22, designation: 'alAql', nakshatra: 'Śravaṇa' },
+  { id: 23, designation: 'beDel', nakshatra: 'Dhaniṣṭhā' },
+  { id: 24, designation: 'laAqr', nakshatra: 'Śatabhiṣā' },
+  { id: 25, designation: 'alPeg', nakshatra: 'Pūrva Bhādrapadā' },
+  { id: 26, designation: 'gaPeg', nakshatra: 'Uttara Bhādrapadā' },
+  { id: 27, designation: 'zePsc', nakshatra: 'Revatī' },
+];
+
+/** Junction star for a nakshatra id (1-27), if defined. */
+export function junctionStarOf(id: number): NakshatraJunctionStar | undefined {
+  return NAKSHATRA_JUNCTION_STARS.find((star) => star.id === id);
+}
+
+/**
  * 27 Nakshatra Listesi
  * Kaynak: Brihat Parashara Hora Shastra
  */

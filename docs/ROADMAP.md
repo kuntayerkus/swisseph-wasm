@@ -364,11 +364,13 @@ The planned techniques are done. Three things are left open on purpose.
 citable list, but getting them right needs a proper source. A hand-typed table
 would be exactly the mistake the curation section argues against.
 
-*Update:* source research is done — `docs/NAKSHATRA-STARS.md` carries the
-verified list (Sūrya Siddhānta via Burgess; asterism membership via Basham),
-every junction star resolved end to end through the WASM build (27/27), and
-the catalogue quirks documented (Bharani → 41 Arietis, Viśākhā → `al-2Lib`,
-σ Sagittarii → `siSgr`). Wiring it into `@kuntay/swisseph-advanced` remains.
+*Update:* done — `docs/NAKSHATRA-STARS.md` carries the verified list
+(Sūrya Siddhānta via Burgess; asterism membership via Basham), every
+junction star resolved end to end through the WASM build (27/27), and the
+catalogue quirks documented (Bharani → 41 Arietis, Viśākhā → `al-2Lib`,
+σ Sagittarii → `siSgr`). The list ships as a `nakshatra` curation group in
+core (`NAKSHATRA_STARS`, `NAKSHATRA_JUNCTION_STARS`) and as the id-keyed
+`NAKSHATRA_JUNCTION_STARS` mapping in `@kuntay/swisseph-advanced`.
 
 **An extended asteroid tier** (~100 bodies, ~4 MB). The curation list should
 live as metadata and loading should stay selective; the current 16-body

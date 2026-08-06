@@ -50,6 +50,36 @@ export const BEHENIAN_STARS: readonly CuratedStar[] = starsInGroup('behenian');
 export const NOTABLE_STARS: readonly CuratedStar[] = starsInGroup('notable');
 
 /**
+ * The 27 junction stars (yogatāra) of the nakshatras — the star each
+ * nakshatra is defined by, in the order of the Sūrya Siddhānta. Positions
+ * come from `sefstars.txt` at runtime via {@link byDesignation}; the
+ * curation (which star defines which nakshatra, and the three places where
+ * that choice needed judgment) is documented in `docs/NAKSHATRA-STARS.md`.
+ */
+export const NAKSHATRA_STARS: readonly CuratedStar[] = starsInGroup('nakshatra');
+
+/** The 27 nakshatra names in traditional order, 1 (Aśvinī) through 27. */
+export const NAKSHATRA_ORDER: readonly string[] = [
+  'Aśvinī', 'Bharaṇī', 'Kṛttikā', 'Rohiṇī', 'Mṛgaśira', 'Ārdrā',
+  'Punarvasū', 'Puṣya', 'Āśleṣā', 'Maghā', 'Pūrva Phalgunī',
+  'Uttara Phalgunī', 'Hasta', 'Citrā', 'Svātī', 'Viśākhā', 'Anurādhā',
+  'Jyeṣṭhā', 'Mūla', 'Pūrva Āṣāḍhā', 'Uttara Āṣāḍhā', 'Śravaṇa',
+  'Dhaniṣṭhā', 'Śatabhiṣā', 'Pūrva Bhādrapadā', 'Uttara Bhādrapadā',
+  'Revatī',
+];
+
+/**
+ * The junction stars in traditional nakshatra order, 1 (Aśvinī) through
+ * 27 (Revatī). `NAKSHATRA_STARS` is sorted by magnitude like every other
+ * group; this ordering is the tradition's own, so it lives here rather
+ * than in the generated table.
+ */
+export const NAKSHATRA_JUNCTION_STARS: readonly CuratedStar[] =
+  NAKSHATRA_ORDER
+    .map((name) => NAKSHATRA_STARS.find((star) => star.nakshatra === name))
+    .filter((star): star is CuratedStar => star !== undefined);
+
+/**
  * Stars brighter than {@link BRIGHT_MAGNITUDE_LIMIT}.
  * This group is not curated by hand — it falls out of the catalogue.
  */

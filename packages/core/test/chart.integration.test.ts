@@ -470,6 +470,7 @@ describeBuilt('türetilmiş katman — gerçek harita', () => {
     it('gruplar beklenen boyutta ve çakışmalar korunuyor', () => {
       expect(mod.ROYAL_STARS).toHaveLength(4);
       expect(mod.BEHENIAN_STARS).toHaveLength(15);
+      expect(mod.NAKSHATRA_STARS).toHaveLength(27);
       expect(mod.CURATED_STARS.length).toBeGreaterThan(60);
 
       // 'bright' grubu katalogdan nesnel türetiliyor; sınırın gerçekten
@@ -487,6 +488,49 @@ describeBuilt('türetilmiş katman — gerçek harita', () => {
       for (const name of ['Aldebaran', 'Regulus', 'Antares']) {
         expect(behenianNames).toContain(name);
       }
+    });
+
+    /**
+     * Nakshatra bağlantı yıldızları: kürasyon docs/NAKSHATRA-STARS.md'den,
+     * konumlar katalogdan. Sıra, geleneksel 1-27 düzeni ve Lahiri çapası
+     * (Citrā/Spica = 0° sidereal Terazi tanımı) ayrı ayrı doğrulanıyor.
+     */
+    it('nakshatra bağlantı yıldızları geleneksel sırada ve eksiksiz', () => {
+      const junctions = mod.NAKSHATRA_JUNCTION_STARS;
+      expect(junctions).toHaveLength(27);
+      expect(mod.NAKSHATRA_ORDER).toHaveLength(27);
+      expect(junctions[0].nakshatra).toBe('Aśvinī');
+      expect(junctions[0].designation).toBe('beAri');
+      expect(junctions[26].nakshatra).toBe('Revatī');
+      // Citrā'nın bağlantı yıldızı Spica'dır — Lahiri ayanāṁśanın çapası.
+      const citra = junctions.find((s: { nakshatra?: string }) => s.nakshatra === 'Citrā');
+      expect(citra?.designation).toBe('alVir');
+      // Üç istisna adlandırma, belgedeki gerekçeleriyle:
+      const byN = new Map(junctions.map((s: { nakshatra?: string; designation: string }) => [s.nakshatra, s.designation]));
+      expect(byN.get('Bharaṇī')).toBe('41Ari');
+      expect(byN.get('Viśākhā')).toBe('al-2Lib');
+      expect(byN.get('Uttara Āṣāḍhā')).toBe('siSgr');
+    });
+
+    itData('nakshatra bağlantı yıldızlarının 27\'si de katalogda çözülüyor', () => {
+      const failures: string[] = [];
+      for (const star of mod.NAKSHATRA_STARS) {
+        try {
+          swe.fixedStar(mod.byDesignation(star.designation), jd);
+        } catch (error) {
+          failures.push(`${star.nakshatra} (${star.designation}): ${(error as Error).message}`);
+        }
+      }
+      expect(failures).toEqual([]);
+    });
+
+    itData('Lahiri çapası: Spica J2000\'de ~203.84° tropikal', () => {
+      // Citrā/Spica'nın 0° sidereal Terazi'de durması Lahiri ayanāṁśanın
+      // TANIMI. J2000'de tropikal konum ≈ 180° + 23.84° ayanāṁśa.
+      const j2000 = swe.julianDay(2000, 1, 1, 12);
+      const spica = swe.fixedStar(mod.byDesignation('alVir'), j2000);
+      expect(spica.longitude).toBeGreaterThan(203.7);
+      expect(spica.longitude).toBeLessThan(204.0);
     });
   });
 
