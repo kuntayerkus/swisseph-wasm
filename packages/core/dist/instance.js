@@ -1,6 +1,7 @@
 import createSwissEphModule from '../wasm/swisseph.mjs';
 import { ASCMC, Body, Calendar, EclipseFlag, EclipticNutationId, Flag, HouseSystem, RiseTransit, SIGNS, } from './constants.js';
 import { requiredEphemerisFiles } from './ephemeris/files.js';
+import { asteroidFile } from './ephemeris/asteroids.js';
 import { determineSect, } from './derived/sect.js';
 import { calculateLots, } from './derived/lots.js';
 import { ANGLE_EVENTS, findParans, } from './derived/parans.js';
@@ -324,6 +325,20 @@ export async function createSwissEph(options = {}) {
         let bytes = 0;
         for (const [name, content] of Object.entries(files)) {
             const data = content instanceof Uint8Array ? content : new Uint8Array(content);
+            // Asteroid dosyaları iç içe dizinlerde gelir (ör. `ast0/se00433s.se1`):
+            // MEMFS'te ara dizinler kendiliğinden var olmaz, önce kurulmalılar —
+            // yoksa writeFile ENOENT verir.
+            const segments = name.split('/');
+            let parent = dir;
+            for (const segment of segments.slice(0, -1)) {
+                parent = `${parent}/${segment}`;
+                try {
+                    wasm.FS.mkdir(parent);
+                }
+                catch {
+                    // Zaten var — aynı kökten birden çok dosya bağlanıyor.
+                }
+            }
             wasm.FS.writeFile(`${dir}/${name}`, data);
             bytes += data.byteLength;
         }
@@ -1249,6 +1264,49 @@ export async function createSwissEph(options = {}) {
                 }
                 else
                     missing.push(name);
+            }
+            const bytes = mountFiles(files, dir);
+            return { loaded, missing, bytes };
+        },
+        /**
+         * Fetches and mounts only the numbered-asteroid files requested.
+         *
+         * The extended tier (see `EXTENDED_ASTEROIDS`) ships as metadata, not as
+         * bundled files: each asteroid has its own `.se1` file and a chart rarely
+         * needs more than a handful. Pass the MPC numbers you want; the rest
+         * stay un-downloaded.
+         *
+         * Numbers already covered by the main ephemeris (Ceres, Pallas, ...)
+         * work too — the extra file simply shadows what `seas_*.se1` provides.
+         *
+         * ```ts
+         * const swe = await createSwissEph();
+         * await swe.loadAsteroids(new FetchEphemeris(), [Asteroid.Eros, 16]);
+         * swe.calc(jd, asteroidBody(Asteroid.Eros)); // now works
+         * ```
+         *
+         * Invalid numbers (zero, negative, fractional) raise the same
+         * `RangeError` as `asteroidFile()`.
+         */
+        async loadAsteroids(source, numbers, dir = DEFAULT_EPHE_PATH) {
+            // Tekrarlanan numaralar tek istek olsun; sıralama sonucu değiştirmez.
+            const wanted = [...new Set(numbers)].map((n) => ({ n, spec: asteroidFile(n) }));
+            // İki yerleşim de geçerli: upstream arşiv iç içe (`ast0/se00433s.se1`),
+            // npm paketi ve CDN düz taşır (`se00433s.se1`). Önce iç içe yol
+            // denenir, yoksa düz ada düşülür — SE'nin kendi art zincirinin
+            // (sweph.c:2204) yükleyici tarafındaki karşılığı.
+            const readEither = async (spec) => (await source.read(spec.path)) ?? (await source.read(spec.fileName));
+            const results = await Promise.all(wanted.map(async ({ n, spec }) => [n, spec, await readEither(spec)]));
+            const files = {};
+            const loaded = [];
+            const missing = [];
+            for (const [n, spec, content] of results) {
+                if (content) {
+                    files[spec.path] = content;
+                    loaded.push(n);
+                }
+                else
+                    missing.push(n);
             }
             const bytes = mountFiles(files, dir);
             return { loaded, missing, bytes };

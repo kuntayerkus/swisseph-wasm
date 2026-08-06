@@ -34,6 +34,7 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.se1': 'application/octet-stream',
   '.txt': 'text/plain; charset=utf-8',
+  '.tsv': 'text/tab-separated-values; charset=utf-8',
   '.map': 'application/json; charset=utf-8',
 };
 
@@ -60,6 +61,12 @@ const server = createServer((req, res) => {
     for (const base of [EPHE, ASTEROIDS]) {
       const candidate = safeResolve(base, name);
       if (candidate && existsSync(candidate)) { file = candidate; break; }
+    }
+  } else if (path.startsWith('/geo/')) {
+    // Geo paketi: cities.tsv + derlenmiş modül.
+    const candidate = safeResolve(join(ROOT, 'packages', 'geo'), path.slice('/geo/'.length));
+    if (candidate && existsSync(candidate) && statSync(candidate).isFile()) {
+      file = candidate;
     }
   } else {
     const candidate = safeResolve(ROOT, path);

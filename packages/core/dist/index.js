@@ -27,7 +27,7 @@ export { NatalChartBuilder, TransitChartBuilder, } from './derived/chart-builder
 export { LRUCache, memoize, createCachedFunction, } from './cache/lru-cache.js';
 export { ASCMC, AsteroidOffset, Ayanamsa, Body, Calendar, EclipseFlag, EclipticNutationId, FictitiousOffset, Flag, HeliacalEvent, HeliacalFlag, HOUSE_SYSTEM_ALIASES, HOUSE_SYSTEM_NAMES, HouseSystem, PlanetMoonOffset, REQUIRES_EPHEMERIS_FILE, RiseTransit, SIGNS, } from './constants.js';
 export { approximateYearFromJulianDay, AUXILIARY_FILES, COVERAGE, ephemerisFileFor, requiredEphemerisFiles, } from './ephemeris/files.js';
-export { Asteroid, asteroidBody, asteroidFile, ASTEROID_NAMES, BUILT_IN_ASTEROIDS, POPULAR_ASTEROIDS, } from './ephemeris/asteroids.js';
+export { Asteroid, asteroidBody, asteroidFile, ASTEROID_NAMES, BUILT_IN_ASTEROIDS, EXTENDED_ASTEROIDS, extendedAsteroidName, POPULAR_ASTEROIDS, } from './ephemeris/asteroids.js';
 export { BrowserCache, DEFAULT_CDN_BASE, FetchEphemeris, MemoryEphemeris, NodeFsEphemeris, } from './ephemeris/sources.js';
 export { determineSect, normalizeDegrees, } from './derived/sect.js';
 export { assignHouses, houseOf, } from './derived/houses.js';

@@ -24,11 +24,11 @@ export class RateLimiter {
   private clients = new Map<string, ClientData>();
   private config: Required<RateLimitConfig>;
 
-  constructor(config: RateLimitConfig = {}) {
+  constructor(config: Partial<RateLimitConfig> = {}) {
     this.config = {
       windowMs: 60 * 1000, // 1 dakika
       maxRequests: 30, // 30 istek/dakika
-      message: 'Çok fazla istek. Lütfen daha sonra tekrar deneyin.',
+      message: 'Too many requests. Please try again later.',
       standardHeaders: true,
       legacyHeaders: false,
       ...config
@@ -236,7 +236,7 @@ export const defaultRateLimiter = new RateLimiter({
 export const strictRateLimiter = new RateLimiter({
   windowMs: 60 * 1000,
   maxRequests: 10,
-  message: 'Çok hızlı istek gönderiyorsunuz. Lütfen yavaşlayın.'
+  message: 'You are sending requests too quickly. Please slow down.'
 });
 
 /**
@@ -247,5 +247,3 @@ export const relaxedRateLimiter = new RateLimiter({
   windowMs: 60 * 1000,
   maxRequests: 100
 });
-
-export { RateLimiter };

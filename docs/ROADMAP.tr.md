@@ -276,14 +276,35 @@ gerçek ve kaynaklandırılabilir bir liste, ama doğru yazmak için düzgün bi
 kaynak gerekiyor. Elle yazılmış bir tablo, tam da kürasyon bölümünde
 eleştirdiğimiz hatanın kendisi olurdu.
 
+*Güncelleme:* Kaynak araştırması tamamlandı — `docs/NAKSHATRA-STARS.md`
+doğrulanmış listeyi taşıyor (Burgess üzerinden Sūrya Siddhānta; asterism
+üyelikleri Basham). Tüm yogatara'lar WASM build üzerinden uçtan uca çözüldü
+(27/27) ve katalog tuhaflıkları belgelendi (Bharani → 41 Arietis, Viśākhā →
+`al-2Lib`, σ Sagittarii → `siSgr`). Kalan: `@kuntay/swisseph-advanced`
+pakete bağlamak.
+
 **Genişletilmiş asteroid katmanı** (~100 cisim, ~4 MB) — kürasyon listesi
 metadata olarak tutulmalı ve yükleme seçmeli kalmalı; şu anki 16 cisimlik
 paket çoğu kullanım için yeterli.
+
+*Güncelleme:* Mekanizma hazır — `EXTENDED_ASTEROIDS` (ilk 100 numaralı
+asteroid + 16 küratörlü cisim; adlar resmi `seasnam.txt`'den
+`tools/generate-asteroid-names.mjs` ile üretiliyor) metadata olarak taşınıyor
+ve `SwissEph.loadAsteroids(source, numbers)` yalnızca istenen dosyaları
+yükleniyor (hem iç içe upstream hem düz npm yerleşimi, tekrarlar düşürülmüş,
+`missing` raporuyla). Daha geniş bir dosya katmanını paketlemek hâlâ açık.
 
 **Tarayıcı yolunun gerçek tarayıcıda otomatik testi** — `check:browser`
 tarayıcının katı kısıtlarını Node'da taklit ediyor ve gerçek bir hatayı bu
 yolla yakaladı (`fetch`'in bağlanma zorunluluğu), ama gerçek tarayıcı testinin
 yerini tutmaz. Demo elle çalıştırılarak doğrulandı.
+
+*Güncelleme:* Bu başlık artık kapalı — `check:browser-real` (`npm run
+check:browser-real`) demoyu Playwright ile headless Chromium'da uçtan uca
+sürüyor: WASM yüklenmesi, Moshier hesabı, `FetchEphemeris` + `BrowserCache`
+üzerinden `.se1` indirme, tam hassasiyete yükseltme ve önbellekten yeniden
+yükleme; konsol ve sayfa hataları da toplanıyor. Tek seferlik
+`npx playwright install chromium` gerektirir.
 
 ---
 

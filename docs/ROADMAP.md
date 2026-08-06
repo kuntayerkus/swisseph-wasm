@@ -364,11 +364,31 @@ The planned techniques are done. Three things are left open on purpose.
 citable list, but getting them right needs a proper source. A hand-typed table
 would be exactly the mistake the curation section argues against.
 
+*Update:* source research is done — `docs/NAKSHATRA-STARS.md` carries the
+verified list (Sūrya Siddhānta via Burgess; asterism membership via Basham),
+every junction star resolved end to end through the WASM build (27/27), and
+the catalogue quirks documented (Bharani → 41 Arietis, Viśākhā → `al-2Lib`,
+σ Sagittarii → `siSgr`). Wiring it into `@kuntay/swisseph-advanced` remains.
+
 **An extended asteroid tier** (~100 bodies, ~4 MB). The curation list should
 live as metadata and loading should stay selective; the current 16-body
 package covers most use.
+
+*Update:* the mechanism exists — `EXTENDED_ASTEROIDS` (first 100 numbered
+asteroids + the 16 curated bodies, names generated from the official
+`seasnam.txt` via `tools/generate-asteroid-names.mjs`) ships as metadata, and
+`SwissEph.loadAsteroids(source, numbers)` loads exactly the files requested
+(both nested upstream and flat npm layouts, deduplicated, with a `missing`
+report). Bundling a wider file tier is still open.
 
 **Automated testing of the browser path in a real browser.** `check:browser`
 simulates the browser's stricter constraints under Node and caught a real bug
 that way — `fetch` requiring its receiver to be the global object — but it is
 not a substitute. The demo has been verified by hand.
+
+*Update:* this is now covered — `check:browser-real` (`npm run
+check:browser-real`) drives the demo end to end in headless Chromium via
+Playwright: WASM load, Moshier calculation, `.se1` download through
+`FetchEphemeris` + `BrowserCache`, the full-precision upgrade, and cache
+reload, collecting console and page errors along the way. Requires a one-time
+`npx playwright install chromium`.

@@ -27,7 +27,7 @@ export { NatalChartBuilder, TransitChartBuilder, type NatalChart, type NatalChar
 export { LRUCache, memoize, createCachedFunction, type CacheConfig, } from './cache/lru-cache.js';
 export { ASCMC, AsteroidOffset, Ayanamsa, Body, Calendar, EclipseFlag, EclipticNutationId, FictitiousOffset, Flag, HeliacalEvent, HeliacalFlag, HOUSE_SYSTEM_ALIASES, HOUSE_SYSTEM_NAMES, HouseSystem, PlanetMoonOffset, REQUIRES_EPHEMERIS_FILE, RiseTransit, SIGNS, type Sign, } from './constants.js';
 export { approximateYearFromJulianDay, AUXILIARY_FILES, COVERAGE, ephemerisFileFor, requiredEphemerisFiles, type EphemerisFileKind, type RequiredFilesOptions, } from './ephemeris/files.js';
-export { Asteroid, asteroidBody, asteroidFile, ASTEROID_NAMES, BUILT_IN_ASTEROIDS, POPULAR_ASTEROIDS, type AsteroidFileSpec, } from './ephemeris/asteroids.js';
+export { Asteroid, asteroidBody, asteroidFile, ASTEROID_NAMES, BUILT_IN_ASTEROIDS, EXTENDED_ASTEROIDS, extendedAsteroidName, POPULAR_ASTEROIDS, type AsteroidFileSpec, type NamedAsteroid, } from './ephemeris/asteroids.js';
 export { BrowserCache, DEFAULT_CDN_BASE, FetchEphemeris, MemoryEphemeris, NodeFsEphemeris, type EphemerisCache, type EphemerisSource, type FetchEphemerisOptions, } from './ephemeris/sources.js';
 export { determineSect, normalizeDegrees, type Sect, type SectMethod, type SectOptions, type SectResult, } from './derived/sect.js';
 export { assignHouses, houseOf, type HousePlacement, } from './derived/houses.js';

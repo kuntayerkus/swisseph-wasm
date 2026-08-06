@@ -97,4 +97,13 @@ export declare function asteroidFile(number: number, options?: {
 export declare const POPULAR_ASTEROIDS: readonly number[];
 /** Number to name, for error messages and diagnostics. */
 export declare const ASTEROID_NAMES: Readonly<Record<number, string>>;
+/**
+ * Extended tier metadata: the first 100 numbered asteroids plus the 16
+ * curated bodies. Names come from the official Astrodienst list
+ * (generated, never hand-typed) — see `generated/asteroid-names.ts`.
+ *
+ * The files are NOT bundled; load only what you need with
+ * `SwissEph.loadAsteroids()`.
+ */
+export { EXTENDED_ASTEROIDS, extendedAsteroidName, type NamedAsteroid, } from '../generated/asteroid-names.js';
 //# sourceMappingURL=asteroids.d.ts.map

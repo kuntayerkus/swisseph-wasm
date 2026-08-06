@@ -122,4 +122,13 @@ export const POPULAR_ASTEROIDS = Object.values(Asteroid)
     .sort((a, b) => a - b);
 /** Number to name, for error messages and diagnostics. */
 export const ASTEROID_NAMES = Object.fromEntries(Object.entries(Asteroid).map(([name, number]) => [number, name]));
+/**
+ * Extended tier metadata: the first 100 numbered asteroids plus the 16
+ * curated bodies. Names come from the official Astrodienst list
+ * (generated, never hand-typed) — see `generated/asteroid-names.ts`.
+ *
+ * The files are NOT bundled; load only what you need with
+ * `SwissEph.loadAsteroids()`.
+ */
+export { EXTENDED_ASTEROIDS, extendedAsteroidName, } from '../generated/asteroid-names.js';
 //# sourceMappingURL=asteroids.js.map

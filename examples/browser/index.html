@@ -61,6 +61,15 @@
   footer { margin-top: 3rem; padding-top: 1rem; border-top: 1px solid var(--line);
            color: var(--muted); font-size: .8rem; }
   code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .9em; }
+  .city-wrap { position: relative; }
+  .city-results { position: absolute; z-index: 10; left: 0; right: 0; top: 100%;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 5px;
+    max-height: 16rem; overflow-y: auto; box-shadow: 0 4px 12px rgb(0 0 0 / .35); }
+  .city-results button { display: block; width: 100%; text-align: left; border: none;
+    border-bottom: 1px solid var(--line); background: var(--bg); color: var(--fg);
+    font: inherit; padding: .4rem .6rem; cursor: pointer; }
+  .city-results button:hover { color: var(--accent); }
+  .city-results .sub { color: var(--muted); font-size: .75rem; margin-left: .5rem; }
 </style>
 </head>
 <body>
@@ -76,6 +85,13 @@
 
   <fieldset>
     <legend>Doğum verisi</legend>
+    <div class="row city-wrap">
+      <label>Şehir — enlem, boylam ve saat dilimi kendiliğinden dolar
+        <input id="city" autocomplete="off" placeholder="örn. İstanbul, London, New York…"
+               style="width:22rem">
+      </label>
+      <div id="cityResults" class="city-results" hidden></div>
+    </div>
     <div class="row">
       <label>Tarih<input id="date" type="date" value="1990-05-15" style="width:10rem"></label>
       <label>Yerel saat<input id="time" type="time" value="14:30" style="width:7rem"></label>
@@ -116,6 +132,9 @@ import {
   createSwissEph, Body, HouseSystem, HOUSE_SYSTEM_NAMES, ROYAL_STARS,
   byDesignation, FetchEphemeris, BrowserCache,
 } from '../../packages/core/dist/index.js';
+import {
+  parseCities, searchCities, offsetForWallClock, formatOffsetHours,
+} from '../../packages/geo/dist/index.js';
 
 const $ = (id) => document.getElementById(id);
 const status = $('status');
@@ -188,6 +207,86 @@ try {
   window.__error = String(error);
   throw error;
 }
+
+// --- Şehir seçici: enlem/boylam + saat dilimi kendiliğinden -------------
+//
+// Yanlış haritaların en yaygın sebebi elle girilen koordinat ve dilimdir.
+// Seçilen şehrin IANA bölgesi, girilen TARİH için çözümlenir: Türkiye'nin
+// 2016 öncesi yaz saati, eski LMT'ler, yarı saatlik dilimler — hepsi
+// sistemin kendi tz veritabanından gelir, elle tablo yok.
+let cities = null;
+let selectedZone = null;
+
+function applyZoneToTz() {
+  if (!selectedZone) return;
+  const [y, m, d] = $('date').value.split('-').map(Number);
+  const [hh, mm] = ($('time').value || '12:00').split(':').map(Number);
+  try {
+    const { offsetHours, ambiguous, alternativeOffsetHours } =
+      offsetForWallClock(selectedZone, y, m, d, hh, mm);
+    $('tz').value = offsetHours;
+    let note = `Saat dilimi: ${selectedZone} → ${formatOffsetHours(offsetHours)}`;
+    if (ambiguous) {
+      note += `  ⚠ Bu saat dilim geçişinde İKİ kez yaşandı; diğer olasılık ` +
+        formatOffsetHours(alternativeOffsetHours);
+    }
+    say(note);
+  } catch (error) {
+    say(`Saat dilimi çözülemedi (${selectedZone}): ${error.message}`);
+  }
+}
+
+fetch('/geo/cities.tsv')
+  .then((res) => {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.text();
+  })
+  .then((text) => {
+    cities = parseCities(text);
+    window.__cities = cities.length;
+  })
+  .catch(() => {
+    // Veri dosyası yoksa alanı gizle — elle giriş yine çalışır.
+    document.querySelector('.city-wrap').hidden = true;
+  });
+
+const cityInput = $('city');
+const cityResults = $('cityResults');
+let cityTimer;
+
+cityInput.addEventListener('input', () => {
+  clearTimeout(cityTimer);
+  cityTimer = setTimeout(() => {
+    const q = cityInput.value.trim();
+    if (!cities || q.length < 2) { cityResults.hidden = true; return; }
+    const hits = searchCities(cities, q, { limit: 8 });
+    cityResults.replaceChildren(...hits.map((c) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.innerHTML =
+        `<span>${c.name}</span>` +
+        `<span class="sub">${c.country} · ${c.timezone}</span>`;
+      b.addEventListener('click', () => {
+        cityInput.value = `${c.name}, ${c.country}`;
+        $('lat').value = c.latitude.toFixed(2);
+        $('lon').value = c.longitude.toFixed(2);
+        selectedZone = c.timezone;
+        cityResults.hidden = true;
+        applyZoneToTz();
+      });
+      return b;
+    }));
+    cityResults.hidden = hits.length === 0;
+  }, 120);
+});
+
+cityInput.addEventListener('blur', () => {
+  // Tıklamanın yetişmesi için kapanmayı geciktir.
+  setTimeout(() => { cityResults.hidden = true; }, 150);
+});
+
+$('date').addEventListener('change', applyZoneToTz);
+$('time').addEventListener('change', applyZoneToTz);
 
 function compute() {
   const [y, m, d] = $('date').value.split('-').map(Number);

@@ -373,6 +373,31 @@ export declare function createSwissEph(options?: SwissEphOptions): Promise<{
         bytes: number;
     }>;
     /**
+     * Fetches and mounts only the numbered-asteroid files requested.
+     *
+     * The extended tier (see `EXTENDED_ASTEROIDS`) ships as metadata, not as
+     * bundled files: each asteroid has its own `.se1` file and a chart rarely
+     * needs more than a handful. Pass the MPC numbers you want; the rest
+     * stay un-downloaded.
+     *
+     * Numbers already covered by the main ephemeris (Ceres, Pallas, ...)
+     * work too — the extra file simply shadows what `seas_*.se1` provides.
+     *
+     * ```ts
+     * const swe = await createSwissEph();
+     * await swe.loadAsteroids(new FetchEphemeris(), [Asteroid.Eros, 16]);
+     * swe.calc(jd, asteroidBody(Asteroid.Eros)); // now works
+     * ```
+     *
+     * Invalid numbers (zero, negative, fractional) raise the same
+     * `RangeError` as `asteroidFile()`.
+     */
+    loadAsteroids(source: EphemerisSource, numbers: readonly number[], dir?: string): Promise<{
+        loaded: number[];
+        missing: number[];
+        bytes: number;
+    }>;
+    /**
      * Node only: mounts a real directory with **no copying**.
      *
      * `mountEphemeris()` copies files into memory, and since isolation means

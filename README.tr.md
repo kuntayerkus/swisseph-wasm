@@ -44,10 +44,16 @@ Kütüphanenin tamamı **230 KB brotli** ve **hiçbir veri dosyası olmadan**
 | 6 | Demo, API referansı, yayın altyapısı | ✅ |
 | 7 | MCP sunucusu: stdio üzerinden sekiz araç, uçtan uca doğrulanmış | ✅ |
 
-**Henüz npm'de değil — bilinçli olarak.** Yayın için gereken her şey hazır;
-kalan tek şey bir karar, bir npm hesabı ve bir etiket.
+**npm'de yayında.** Hesaplama motoru, tipli API ve türetilmiş katman tamamlandı
+ve doğrulandı; ilk yayın dalgası (0.2.x) canlı:
+[`@kuntay/swisseph`](https://www.npmjs.com/package/@kuntay/swisseph) ·
+[`@kuntay/swisseph-data`](https://www.npmjs.com/package/@kuntay/swisseph-data) ·
+[`@kuntay/swisseph-asteroids`](https://www.npmjs.com/package/@kuntay/swisseph-asteroids) ·
+[`@kuntay/swisseph-mcp`](https://www.npmjs.com/package/@kuntay/swisseph-mcp).
+Kalan paketler (`advanced`, `viz`, `react-ui`, `license`) 0.3.0 dalgası için
+geliştirmede.
 
-Belgeler: [API referansı](docs/API.md) · [Yol haritası](docs/ROADMAP.tr.md) · [English README](README.md)
+Belgeler: [API referansı](docs/API.md) · [Mimari](docs/ARCHITECTURE.tr.md) · [Yol haritası](docs/ROADMAP.tr.md) · [English README](README.md)
 
 ## Native derlemeye karşı doğrulanmış
 

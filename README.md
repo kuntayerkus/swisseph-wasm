@@ -33,8 +33,14 @@ files at all**.
 
 ## Status
 
-**In development.** The calculation engine, the typed API and the derived layer
-are complete and verified. What remains is packaging and release.
+**Published on npm.** The calculation engine, the typed API and the derived
+layer are complete and verified; the first release wave is live (0.2.x):
+[`@kuntay/swisseph`](https://www.npmjs.com/package/@kuntay/swisseph) ·
+[`@kuntay/swisseph-data`](https://www.npmjs.com/package/@kuntay/swisseph-data) ·
+[`@kuntay/swisseph-asteroids`](https://www.npmjs.com/package/@kuntay/swisseph-asteroids) ·
+[`@kuntay/swisseph-mcp`](https://www.npmjs.com/package/@kuntay/swisseph-mcp).
+The remaining packages (`advanced`, `viz`, `react-ui`, `license`) are in
+development for the 0.3.0 wave.
 
 | Phase | Scope | State |
 |---|---|---|
@@ -47,11 +53,7 @@ are complete and verified. What remains is packaging and release.
 | 6 | Demo, API reference, release tooling | ✅ Done |
 | 7 | MCP server: eight tools over stdio, verified end to end | ✅ Done |
 
-**Not on npm yet — deliberately.** Everything needed to publish is in place;
-what remains is a decision, an npm account, and one tag. See
-[Releasing](#releasing).
-
-Documentation: [API reference](docs/API.md) · [Roadmap](docs/ROADMAP.md) · [Türkçe README](README.tr.md)
+Documentation: [API reference](docs/API.md) · [Architecture](docs/ARCHITECTURE.md) · [Roadmap](docs/ROADMAP.md) · [Türkçe README](README.tr.md)
 
 ## Verified against a native build
 

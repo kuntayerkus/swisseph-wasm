@@ -1,0 +1,20 @@
+{
+  "file": "cities.tsv",
+  "sha256": "45d70dac18e0d19da7b5918b83c4075024fffc3472d41b53a678734822b1bd91",
+  "rows": 34073,
+  "columns": [
+    "name",
+    "asciiName",
+    "latitude",
+    "longitude",
+    "countryCode",
+    "country",
+    "timezone",
+    "population"
+  ],
+  "source": "https://download.geonames.org/export/dump/cities15000.zip",
+  "countrySource": "https://download.geonames.org/export/dump/countryInfo.txt",
+  "license": "CC-BY 4.0 — https://www.geonames.org (veri GeoNames'den türetilmiştir)",
+  "generatedAt": "2026-08-06",
+  "note": "Üretilmiş dosya — elle düzenlemeyin: node tools/build-geo-package.mjs"
+}

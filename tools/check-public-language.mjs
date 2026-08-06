@@ -35,8 +35,15 @@ const ROOTS = ['packages/core/src', 'packages/mcp/src'];
  * `lot-names-tr.ts` Türkçe lot adlarını KASITLI olarak taşıyan locale
  * haritası: varsayılan İngilizce, Türkçe isteyen çağıran için opt-in. Dosyanın
  * tek işi bu, dolayısıyla taramanın dışında.
+ *
+ * `i18n/index.ts` beş dilin (tr/en/de/fr/es) çeviri tablolarını taşıyan
+ * locale haritası: Türkçe string'ler veri, kodun dili değil. Dosyanın tek
+ * işi bu, dolayısıyla taramanın dışında.
  */
-const ALLOWED = new Set(['packages/core/src/derived/lot-names-tr.ts']);
+const ALLOWED = new Set([
+  'packages/core/src/derived/lot-names-tr.ts',
+  'packages/core/src/i18n/index.ts',
+]);
 
 const TURKISH = /[çğıİöşüÇĞÖŞÜ]/;
 

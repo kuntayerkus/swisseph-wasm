@@ -81,8 +81,11 @@ export {
   asteroidFile,
   ASTEROID_NAMES,
   BUILT_IN_ASTEROIDS,
+  EXTENDED_ASTEROIDS,
+  extendedAsteroidName,
   POPULAR_ASTEROIDS,
   type AsteroidFileSpec,
+  type NamedAsteroid,
 } from './ephemeris/asteroids.js';
 
 export {

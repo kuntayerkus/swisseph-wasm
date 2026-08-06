@@ -151,3 +151,17 @@ export const POPULAR_ASTEROIDS: readonly number[] = Object.values(Asteroid)
 export const ASTEROID_NAMES: Readonly<Record<number, string>> = Object.fromEntries(
   Object.entries(Asteroid).map(([name, number]) => [number, name]),
 );
+
+/**
+ * Extended tier metadata: the first 100 numbered asteroids plus the 16
+ * curated bodies. Names come from the official Astrodienst list
+ * (generated, never hand-typed) — see `generated/asteroid-names.ts`.
+ *
+ * The files are NOT bundled; load only what you need with
+ * `SwissEph.loadAsteroids()`.
+ */
+export {
+  EXTENDED_ASTEROIDS,
+  extendedAsteroidName,
+  type NamedAsteroid,
+} from '../generated/asteroid-names.js';

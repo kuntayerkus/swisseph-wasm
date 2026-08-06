@@ -1,0 +1,36 @@
+{
+  "name": "@kuntay/swisseph-geo",
+  "version": "0.3.0-dev",
+  "description": "City lookup and timezone resolution for swisseph-wasm: GeoNames cities with coordinates and IANA zones, plus dependency-free offset computation",
+  "type": "module",
+  "license": "AGPL-3.0-or-later",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cities.tsv": "./cities.tsv"
+  },
+  "files": [
+    "dist",
+    "src",
+    "cities.tsv",
+    "manifest.json",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "build:geo-data": "node ../../tools/build-geo-package.mjs"
+  },
+  "peerDependencies": {},
+  "keywords": [
+    "astrology",
+    "geonames",
+    "cities",
+    "timezone",
+    "geocoding"
+  ]
+}
