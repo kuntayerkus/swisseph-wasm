@@ -1,1 +1,25 @@
+# Bağımlılıklar
+node_modules/
+
+# Derleme çıktıları
+dist/
+*.tsbuildinfo
+
+# Üretilen veri paketleri (npm run build:data / build:asteroids / build:geo)
+packages/data/ephe/
+packages/asteroids/ephe/
+packages/geo/cities.tsv
+
+# Yerel efemeris verisi (SWISSEPH_EPHE_PATH; CI kendi kopyasını indiriyor)
+.ephe/
+
+# Yerel wasm ikilileri — repodaki swisseph.mjs bilinçli bir stub, gerçeğini CI derliyor
+packages/core/wasm/swisseph.wasm
+
+# Test/kapsama çıktıları
+coverage/
+playwright-report/
+test-results/
+
+# Yerel notlar / yanlışlıkla oluşan dosyalar
 USER_GUIDE.md
