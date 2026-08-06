@@ -1,9 +1,9 @@
 {
   "package": "@kuntay/swisseph-data",
-  "version": "0.1.0-dev",
+  "version": "0.2.2",
   "swissEphemerisVersion": "2.10.03",
   "jplEphemeris": "DE441",
-  "generatedAt": "2026-07-29",
+  "generatedAt": "2026-08-05",
   "totalBytes": 2154517,
   "coverage": {
     "fromYear": 1800,

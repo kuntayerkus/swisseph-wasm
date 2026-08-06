@@ -3,7 +3,7 @@
   "swissEphemerisVersion": "2.10.03",
   "jplEphemeris": "DE441",
   "source": "https://github.com/aloistr/swisseph (Astrodienst)",
-  "generatedAt": "2026-07-29",
+  "generatedAt": "2026-08-05",
   "coverage": {
     "fromYear": 1500,
     "toYear": 2100

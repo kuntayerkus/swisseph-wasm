@@ -31,7 +31,7 @@
     "@types/d3": "^7.4.3",
     "tsup": "^8.0.1",
     "typescript": "^5.3.3",
-    "vitest": "^1.2.1"
+    "vitest": "^4.1.10"
   },
   "keywords": [
     "astrology",
