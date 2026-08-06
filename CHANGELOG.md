@@ -7,6 +7,71 @@ All notable changes to this project are documented here. The format follows
 Note that the vendored Swiss Ephemeris version (`2.10.03`) is independent of
 this package's version; upstream changes are called out explicitly.
 
+## [0.3.0] — 2026-08-06
+
+### Added
+
+- **`@kuntay/swisseph-geo` — a new package.** City lookup and timezone
+  resolution: ~25,000 cities from GeoNames `cities15000` (population ≥ 15,000)
+  carrying coordinates and IANA time zones, plus dependency-free UTC-offset
+  computation for any date. The data is CC-BY 4.0 — attribution lives in the
+  package NOTICE and manifest — and is produced by `npm run build:geo`,
+  caching the source files in `SWISSEPH_EPHE_PATH`. The package exists
+  because every wrong chart the 0.2.x audit traced to user input came in
+  through exactly this door: a hand-typed coordinate or a guessed zone
+  offset. This automates that input instead of documenting it.
+
+- **On-demand asteroid loading.** `loadAsteroids(source, numbers)` fetches
+  and mounts only the numbered-asteroid files asked for; everything else
+  stays un-downloaded and comes back in a `missing` report. Both layouts are
+  accepted — upstream archives nest (`ast0/se00433s.se1`), npm packages and
+  CDNs carry flat names — mirroring Swiss Ephemeris's own fallback chain
+  (`sweph.c:2204`) on the loader side. Repeated numbers collapse into one
+  request. `EXTENDED_ASTEROIDS` carries the metadata tier — the first 100
+  numbered asteroids plus the 16 curated bodies — with names generated from
+  the official Astrodienst `seasnam.txt` rather than typed by hand; the
+  files themselves are deliberately not bundled. Loading nested paths also
+  required `mountFiles` to create intermediate MEMFS directories: MEMFS does
+  not create parents implicitly, so a second file under the same root failed
+  with ENOENT.
+
+- **`NatalChartBuilder` and `TransitChartBuilder`** — a fluent chart API
+  returning typed `NatalChart` / `TransitChart` results, built on the same
+  calculation layer the direct API uses.
+
+- **`LRUCache`, `memoize` and `createCachedFunction`** for caching derived
+  results.
+
+- **`SwissEphWorker`** — a Promise-based wrapper that runs calculations in a
+  Web Worker.
+
+- **Structured errors:** `ErrorCode`, `getErrorSuggestion` and the
+  `ErrorSuggestion` type alongside `SwissEphError`.
+
+- **Sign and aspect metadata:** `AspectIndex`, the `HouseSystemCode` literal
+  type, and `SIGN_ELEMENTS` / `SIGN_MODALITIES` / `SIGN_POLARITIES` with
+  their `Element`, `Modality` and `Polarity` types.
+
+- A token-bucket rate limiter for the MCP server (`RateLimiter`, with
+  tests). It is constructed but not currently enforcing: the transport is
+  stdio and the client is local.
+
+- House-system invariant sweep — `tools/check-houses-invariants.mjs`, 16,000
+  random charts checking internal consistency of the house and angle
+  computation across systems. A check, not library code; listed here because
+  it now runs in `npm run check`.
+
+### Changed
+
+- `@kuntay/swisseph-mcp` pins core to exactly `0.3.0`.
+- `@kuntay/swisseph-data` and `@kuntay/swisseph-asteroids` ship with
+  byte-identical contents to 0.2.2; their version follows the monorepo's
+  lockstep rule (the release audit refuses to publish packages at differing
+  versions) rather than any change in the files.
+- The release workflow builds and publishes `@kuntay/swisseph-geo`
+  alongside the original four packages, and verifies the generated
+  `cities.tsv` exists and is non-empty before publishing.
+
 ## [0.2.2] — 2026-07-31
 
 ### Fixed

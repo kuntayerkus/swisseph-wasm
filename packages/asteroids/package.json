@@ -1,6 +1,6 @@
 {
   "name": "@kuntay/swisseph-asteroids",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Ephemeris files for 16 popular asteroids and dwarf planets (Eris, Sedna, Quaoar, Eros, Chariklo and more), 1500-2100 CE. Optional companion to @kuntay/swisseph.",
   "license": "AGPL-3.0-or-later",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@kuntay/swisseph-geo",
-  "version": "0.3.0-dev",
+  "version": "0.3.0",
   "description": "City lookup and timezone resolution for swisseph-wasm: GeoNames cities with coordinates and IANA zones, plus dependency-free offset computation",
   "type": "module",
   "license": "AGPL-3.0-or-later",
@@ -32,5 +32,16 @@
     "cities",
     "timezone",
     "geocoding"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kuntayerkus/swisseph-wasm.git",
+    "directory": "packages/geo"
+  },
+  "homepage": "https://github.com/kuntayerkus/swisseph-wasm#readme",
+  "bugs": "https://github.com/kuntayerkus/swisseph-wasm/issues",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
 }

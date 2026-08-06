@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '..');
 
-const PACKAGES = ['core', 'data', 'asteroids', 'mcp'];
+const PACKAGES = ['core', 'data', 'asteroids', 'geo', 'mcp'];
 const expected = process.argv[2];
 
 /** Bir ağaçtaki en yeni mtime, özyinelemeli. Yoksa 0. */
@@ -136,6 +136,7 @@ for (const name of PACKAGES) {
 console.log('\n  Tazelik (kaynak vs derlenmiş):');
 const freshness = [
   ['packages/core/src', 'packages/core/dist', 'npm run build:ts'],
+  ['packages/geo/src', 'packages/geo/dist', 'npm run build:ts'],
   ['packages/mcp/src', 'packages/mcp/dist', 'npm run build:ts'],
   ['vendor/swisseph', 'packages/core/wasm', 'npm run build:wasm'],
 ];
@@ -160,6 +161,8 @@ const artifacts = [
   ['packages/core/dist/index.d.ts', 'Tip bildirimleri'],
   ['packages/data/manifest.json', 'Veri manifesti'],
   ['packages/asteroids/manifest.json', 'Asteroid manifesti'],
+  ['packages/geo/dist/index.js', 'geo paketi çıktısı'],
+  ['packages/geo/manifest.json', 'geo manifesti'],
   ['packages/mcp/dist/index.js', 'MCP sunucusu'],
 ];
 for (const [path, label] of artifacts) {

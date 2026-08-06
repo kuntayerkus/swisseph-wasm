@@ -72,6 +72,16 @@ jobs:
         run: |
           npm run build:data
           npm run build:asteroids
+          npm run build:geo
+
+      # geo'nun cities.tsv'si üretilmiş veridir ve commit'lenmez; paket
+      # içeriği yine de doğrulanmalı. data/asteroids denetimi manifest
+      # hash'leri üzerinden yürüyor; geo verisi TSV olduğu için burada
+      # en azından dosyanın varlığı ve boş olmadığı denetleniyor.
+      - name: geo paket verisini doğrula
+        run: |
+          test -s packages/geo/cities.tsv \
+            || (echo "::error::packages/geo/cities.tsv yok ya da boş" && exit 1)
 
       # Tam yayın denetimi — ağaç ancak BURADA yayınlanacak haliyle eksiksiz:
       # WASM derlendi, dist/ üretildi, iki veri paketi kuruldu.
@@ -107,7 +117,7 @@ jobs:
 
       - name: Yayınlanacak içeriği listele
         run: |
-          for pkg in core data asteroids mcp; do
+          for pkg in core data asteroids geo mcp; do
             echo "--- packages/$pkg ---"
             npm pack --dry-run --workspace "./packages/$pkg" 2>&1 | tail -30
           done
@@ -124,6 +134,9 @@ jobs:
             packages/core/dist/
             packages/data/
             packages/asteroids/
+            packages/geo/dist/
+            packages/geo/cities.tsv
+            packages/geo/manifest.json
             packages/mcp/dist/
           retention-days: 30
 
@@ -176,11 +189,13 @@ jobs:
       # yokken kanıtlayabiliriz.
       #
       # `--provenance` de kaldırıldı: OIDC ile yayınlarken provenance zaten
-      # otomatik üretiliyor. `--access public` gereksiz, dört paketin de
+      # otomatik üretiliyor. `--access public` gereksiz, beş paketin de
       # package.json'ında publishConfig.access = public yazıyor.
       #
       # Sıra önemli: core önce, veri paketleri ona atıf yapıyor. MCP sunucusu
-      # core'a tam sürümle bağlı olduğu için en sonda.
+      # core'a tam sürümle bağlı. geo bağımsızdır ve trusted publisher kaydı
+      # en yeni olan paket olduğu için en sonda durur — kaydı eksikse ilk
+      # dört paket yine de yayınlanmış olur.
       #
       # Her paketin npmjs.com'da AYRI bir trusted publisher kaydı olmalı:
       # kuntayerkus / swisseph-wasm / release.yml / environment npm_publish.
@@ -191,3 +206,4 @@ jobs:
           npm publish --workspace ./packages/data
           npm publish --workspace ./packages/asteroids
           npm publish --workspace ./packages/mcp
+          npm publish --workspace ./packages/geo

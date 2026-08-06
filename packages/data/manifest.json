@@ -1,6 +1,6 @@
 {
   "package": "@kuntay/swisseph-data",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "swissEphemerisVersion": "2.10.03",
   "jplEphemeris": "DE441",
   "generatedAt": "2026-08-05",

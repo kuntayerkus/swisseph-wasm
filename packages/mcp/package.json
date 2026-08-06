@@ -1,6 +1,6 @@
 {
   "name": "@kuntay/swisseph-mcp",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Model Context Protocol server for Swiss Ephemeris. Gives an LLM exact astronomical and astrological calculations instead of plausible-looking guesses.",
   "license": "AGPL-3.0-or-later",
   "type": "module",
@@ -31,7 +31,7 @@
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
   "dependencies": {
-    "@kuntay/swisseph": "0.2.2",
+    "@kuntay/swisseph": "0.3.0",
     "@modelcontextprotocol/sdk": "1.30.0",
     "zod": "3.25.76"
   },
