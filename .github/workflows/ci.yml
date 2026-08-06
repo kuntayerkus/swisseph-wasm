@@ -64,6 +64,12 @@ jobs:
       # sebeple kırmızı veriyordu. Ölçüldü — ilk CI koşusu tam olarak böyle
       # düştü. Snapshot + diff git'e hiç dokunmadan aynı özelliği sınıyor.
       - name: Regenerate constants and check they are current
+        # bash SABİTLENİYOR: adımdaki $RUNNER_TEMP ve satır sonu ters eğik
+        # çizgi bash sözdizimi. Windows koşucunun öntanımlı kabuğu pwsh'te
+        # $RUNNER_TEMP boş açılıyor ve ters eğik çizgi diff'e argüman olarak
+        # geçiyor — adım "constants bayat" diye yanlış sebeple düşüyordu
+        # (ölçüldü: 5a70975 öncesi windows-latest koşusu, 2026-08-06).
+        shell: bash
         run: |
           cp -r packages/core/src/generated "$RUNNER_TEMP/generated-before"
           npm run build:constants
@@ -87,32 +93,39 @@ jobs:
 
       # Veri dosyaları repoda yok (upstream ephe/ = 379 MB). 1800-2399 CE için
       # gereken 5 dosyayı çekiyoruz — 2.05 MB.
+      #
+      # Dizin $RUNNER_TEMP/ephe: /tmp/ephe Windows'ta iki yerden kırılıyor —
+      # pwsh bash sözdizimini koşamıyor ve Git Bash'in /tmp'si ile Windows
+      # node sürecinin gördüğü yol aynı değil. runner.temp her iki dünyada
+      # da aynı yere çözülüyor; adım bash'a sabitli.
       - name: Fetch ephemeris files for full-precision tests
+        shell: bash
         run: |
-          mkdir -p /tmp/ephe
+          mkdir -p "$RUNNER_TEMP/ephe"
           base=https://raw.githubusercontent.com/aloistr/swisseph/master/ephe
           for f in sepl_18.se1 semo_18.se1 seas_18.se1 sefstars.txt seorbel.txt; do
-            curl -fsSL --retry 3 -o "/tmp/ephe/$f" "$base/$f"
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/ephe/$f" "$base/$f"
           done
-          ls -la /tmp/ephe
+          ls -la "$RUNNER_TEMP/ephe"
 
       - name: API check (includes instance isolation)
         env:
-          SWISSEPH_EPHE_PATH: /tmp/ephe
+          SWISSEPH_EPHE_PATH: ${{ runner.temp }}/ephe
         run: npm run check:api
 
       # Sayısal parite: commit'lenmiş altın korpus native gcc ile üretildi.
       # Korpus 1500-2500 aralığına yayıldığı için üç dosya takımı gerekiyor.
       - name: Fetch wider ephemeris range for the golden corpus
+        shell: bash
         run: |
           base=https://raw.githubusercontent.com/aloistr/swisseph/master/ephe
           for f in sepl_12.se1 semo_12.se1 seas_12.se1 sepl_24.se1 semo_24.se1 seas_24.se1; do
-            curl -fsSL --retry 3 -o "/tmp/ephe/$f" "$base/$f"
+            curl -fsSL --retry 3 -o "$RUNNER_TEMP/ephe/$f" "$base/$f"
           done
 
       - name: Numerical parity against native reference
         env:
-          SWISSEPH_EPHE_PATH: /tmp/ephe
+          SWISSEPH_EPHE_PATH: ${{ runner.temp }}/ephe
         run: npm run check:golden
 
       # Açıları Swiss Ephemeris'ten bağımsız olarak, küresel astronominin
@@ -120,12 +133,12 @@ jobs:
       # bu, ortak bir hatayı da yakalayabilir.
       - name: Angles against classical formulas
         env:
-          SWISSEPH_EPHE_PATH: /tmp/ephe
+          SWISSEPH_EPHE_PATH: ${{ runner.temp }}/ephe
         run: npm run check:angles
 
       - name: Assemble the data package
         env:
-          SWISSEPH_EPHE_PATH: /tmp/ephe
+          SWISSEPH_EPHE_PATH: ${{ runner.temp }}/ephe
         run: npm run build:data
 
       # Asteroid dosyaları upstream'de yalnızca Dropbox'ta ve bir HTTP
@@ -147,14 +160,14 @@ jobs:
       # yükleyip Swiss Ephemeris'in Moshier'e düşmediğini teyit eder.
       - name: Ephemeris loaders
         env:
-          SWISSEPH_EPHE_PATH: /tmp/ephe
+          SWISSEPH_EPHE_PATH: ${{ runner.temp }}/ephe
         run: npm run check:ephemeris
 
       # Yalnızca tarayıcıda ortaya çıkan hataları Node'da taklit ederek
       # yakalar (ör. fetch'in "Illegal invocation" kısıtı).
       - name: Browser-only code paths
         env:
-          SWISSEPH_EPHE_PATH: /tmp/ephe
+          SWISSEPH_EPHE_PATH: ${{ runner.temp }}/ephe
         run: npm run check:browser
 
       # Türetilmiş katmanın birim ve entegrasyon testleri (Vitest).
@@ -165,12 +178,12 @@ jobs:
 
       - name: Verify data package spec
         env:
-          SWISSEPH_EPHE_PATH: /tmp/ephe
+          SWISSEPH_EPHE_PATH: ${{ runner.temp }}/ephe
         run: npm run check:data
 
       - name: Precision sweep (Moshier vs full ephemeris)
         env:
-          SWISSEPH_EPHE_PATH: /tmp/ephe
+          SWISSEPH_EPHE_PATH: ${{ runner.temp }}/ephe
         run: npm run check:precision
 
       # Her şey repo AĞACINDAN test edildi; kullanıcının gördüğü şey tarball.
